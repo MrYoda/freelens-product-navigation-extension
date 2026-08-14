@@ -27,7 +27,7 @@ export class ProductsPage extends React.Component<Record<string, never>, Product
     return <div className="ProductNavigationPage">
     <header><h2>Products</h2><span>{cluster || "All clusters"}</span></header>
     <div className="ProductNavigationToolbar">
-      <Renderer.Component.Input placeholder="Filter products" value={filter} onChange={value => this.setState({ filter: value })} />
+      <Renderer.Component.Input placeholder="Filter products" value={filter} onChange={(value: string) => this.setState({ filter: value })} />
       <label><input type="checkbox" checked={showHidden} onChange={event => this.setState({ showHidden: event.target.checked })} /> Show hidden</label>
     </div>
     {products.length === 0 && <p>No products are configured for this cluster.</p>}

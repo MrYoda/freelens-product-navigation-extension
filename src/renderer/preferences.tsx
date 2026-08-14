@@ -22,7 +22,7 @@ export class Preferences extends React.Component<Record<string, never>, Preferen
 
   render() {
     return <div className="ProductNavigationPreferences">
-      <Renderer.Component.Input multiline rows={16} value={this.state.text} onChange={text => this.setState({ text })} />
+      <Renderer.Component.Input multiline rows={16} value={this.state.text} onChange={(text: string) => this.setState({ text })} />
       <div className="ProductNavigationActions">
         <Renderer.Component.Button primary label="Apply" onClick={this.apply} />
         <Renderer.Component.Button label="Reset" onClick={() => this.setState({ text: JSON.stringify(defaultConfig, null, 2) })} />

@@ -13,12 +13,7 @@ if (!document.getElementById(styleId)) {
 }
 
 export default class ProductNavigationRendererExtension extends Renderer.LensExtension {
-  appPages = [{ id: "product-navigation-app", components: { Page: ProductsPage } }];
-  appPageMenus = [{
-    target: { pageId: "product-navigation-app" },
-    title: "Products",
-    components: { Icon: ProductsIcon },
-  }];
+  globalPages = [{ id: "product-navigation-global", components: { Page: ProductsPage } }];
   clusterPages = [{ id: "product-navigation-cluster", components: { Page: ProductsPage } }];
   clusterPageMenus = [{
     target: { pageId: "product-navigation-cluster" },

@@ -51,6 +51,18 @@ for (const field of ["main", "renderer"]) {
   if (typeof extensionClass !== "function") {
     throw new Error(`${manifest[field]} must evaluate to a CommonJS extension class (directly or as .default)`);
   }
+
+  if (field === "renderer") {
+    const extension = new extensionClass({});
+    const clusterPageId = extension.clusterPages?.[0]?.id;
+    const clusterMenuPageId = extension.clusterPageMenus?.[0]?.target?.pageId;
+    if (!clusterPageId || clusterMenuPageId !== clusterPageId) {
+      throw new Error(`${manifest[field]} must register a cluster page and a menu targeting that page`);
+    }
+    if (extension.appPreferences?.[0]?.title !== "Product navigation") {
+      throw new Error(`${manifest[field]} must register Product navigation preferences`);
+    }
+  }
 }
 
 console.log(`Package ${manifest.name}@${manifest.version} has main and renderer entry points and no runtime dependencies.`);

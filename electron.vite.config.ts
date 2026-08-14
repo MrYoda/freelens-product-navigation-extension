@@ -6,6 +6,7 @@ export default defineConfig({
     build: {
       outDir: "dist/main",
       rollupOptions: {
+        preserveEntrySignatures: "strict",
         input: resolve("src/main/index.ts"),
         output: {
           format: "cjs",
@@ -20,6 +21,7 @@ export default defineConfig({
     build: {
       outDir: "dist/renderer",
       rollupOptions: {
+        preserveEntrySignatures: "strict",
         // electron-vite treats renderer builds as applications unless an
         // explicit Rollup input is provided. Extensions have no index.html.
         input: resolve("src/renderer/index.tsx"),
