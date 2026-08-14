@@ -9,10 +9,10 @@ export function ProductsIcon() {
 
 export function ProductsPage() {
   let page: HTMLDivElement | null = null;
-  const cluster = Renderer.K8sApi.clusterContext.getActiveCluster()?.getName() ?? "";
+  const cluster = Renderer.Catalog.getActiveCluster()?.name ?? "";
   const products = productsForCluster(productNavigationStore.get(), cluster || undefined, true);
   const openPods = (namespace: string) => {
-    Renderer.K8sApi.namespaceStore.context.setSelectedNamespaces([namespace]);
+    Renderer.K8sApi.namespaceStore.selectSingle(namespace);
     Renderer.Navigation.navigate("/workloads/pods");
   };
   const filterProducts = (filter: string) => {

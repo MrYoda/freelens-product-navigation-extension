@@ -42,7 +42,13 @@ for (const field of ["main", "renderer"]) {
   globalThis.LensExtensions = {
     Common: { Store: { ExtensionStore: class {} } },
     Main: { LensExtension: class {} },
-    Renderer: { LensExtension: class {}, Component: {}, K8sApi: {}, Navigation: {} },
+    Renderer: {
+      LensExtension: class {},
+      Catalog: { getActiveCluster: () => ({ name: "test-cluster" }) },
+      Component: { Button: () => null, Icon: () => null },
+      K8sApi: { namespaceStore: { selectSingle: () => undefined } },
+      Navigation: { navigate: () => undefined },
+    },
   };
   globalThis.document ??= { getElementById: () => ({}) };
 
@@ -63,8 +69,14 @@ for (const field of ["main", "renderer"]) {
     if (typeof Page !== "function" || Page.prototype?.isReactComponent) {
       throw new Error(`${manifest[field]} cluster page must be a function component because Freelens invokes it without new`);
     }
+    if (!Page()) {
+      throw new Error(`${manifest[field]} cluster page must render successfully against the public Freelens API`);
+    }
     if (extension.appPreferences?.[0]?.title !== "Product navigation") {
       throw new Error(`${manifest[field]} must register Product navigation preferences`);
+    }
+    if (!extension.appPreferences[0].components?.Input?.()) {
+      throw new Error(`${manifest[field]} preferences input must render successfully`);
     }
   }
 }
