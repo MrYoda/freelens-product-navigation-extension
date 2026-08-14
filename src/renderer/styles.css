@@ -1,0 +1,9 @@
+.ProductNavigationPage { padding: 24px; overflow: auto; height: 100%; }
+.ProductNavigationPage header, .ProductNavigationToolbar, .ProductNavigationActions { display: flex; align-items: center; gap: 16px; }
+.ProductNavigationPage header { justify-content: space-between; }
+.ProductNavigationToolbar { margin: 16px 0 24px; }
+.ProductNavigationPage section { margin: 0 0 24px; }
+.ProductNavigationPage table { border-collapse: collapse; width: 100%; }
+.ProductNavigationPage th, .ProductNavigationPage td { border-bottom: 1px solid var(--border-color); padding: 8px; text-align: left; }
+.ProductNavigationPreferences { min-width: 560px; }
+.ProductNavigationActions { margin-top: 8px; }

@@ -1,0 +1,8 @@
+import { Main } from "@freelensapp/extensions";
+import { productNavigationStore } from "../common/store";
+
+export default class ProductNavigationMainExtension extends Main.LensExtension {
+  async onActivate(): Promise<void> {
+    await productNavigationStore.loadExtension(this);
+  }
+}
