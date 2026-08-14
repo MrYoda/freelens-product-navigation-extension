@@ -1,11 +1,33 @@
-import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import { resolve } from "node:path";
+import { defineConfig } from "electron-vite";
+
+const extensionExternals = [
+  "@freelensapp/extensions",
+  "react",
+  "react/jsx-runtime",
+];
 
 export default defineConfig({
   main: {
-    plugins: [externalizeDepsPlugin()],
-    build: { lib: { entry: "src/main/index.ts", formats: ["es"] } },
+    build: {
+      outDir: "dist/main",
+      rollupOptions: {
+        input: resolve("src/main/index.ts"),
+        external: extensionExternals,
+        output: { format: "es", entryFileNames: "index.js" },
+      },
+    },
   },
   renderer: {
-    build: { lib: { entry: "src/renderer/index.tsx", formats: ["es"] } },
+    build: {
+      outDir: "dist/renderer",
+      rollupOptions: {
+        // electron-vite treats renderer builds as applications unless an
+        // explicit Rollup input is provided. Extensions have no index.html.
+        input: resolve("src/renderer/index.tsx"),
+        external: extensionExternals,
+        output: { format: "es", entryFileNames: "index.js" },
+      },
+    },
   },
 });

@@ -4,6 +4,7 @@
   "description": "Product-oriented navigation for Freelens",
   "type": "module",
   "main": "dist/main/index.js",
+  "renderer": "dist/renderer/index.js",
   "exports": {
     ".": "./dist/main/index.js",
     "./renderer": "./dist/renderer/index.js"
