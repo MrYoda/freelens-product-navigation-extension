@@ -30,6 +30,9 @@ for (const field of ["main", "renderer"]) {
   if (/^\s*import\s/m.test(source)) {
     throw new Error(`${manifest[field]} contains an ESM import but Freelens 1.10 expects a CommonJS entry point`);
   }
+  if (!/exports\.default\s*=/.test(source)) {
+    throw new Error(`${manifest[field]} must expose the extension class as exports.default`);
+  }
 
   const allowedRuntimeModules = new Set(["electron", ...builtinModules, ...builtinModules.map(name => `node:${name}`)]);
   const bareRequires = [...source.matchAll(/require\(["']([^./][^"']*)["']\)/g)].map(match => match[1]);
