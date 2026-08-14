@@ -1,4 +1,5 @@
 import { access, readFile } from "node:fs/promises";
+import { builtinModules } from "node:module";
 
 const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const runtimeDependencyFields = ["dependencies", "optionalDependencies", "peerDependencies"];
@@ -30,8 +31,11 @@ for (const field of ["main", "renderer"]) {
     throw new Error(`${manifest[field]} contains an ESM import but Freelens 1.10 expects a CommonJS entry point`);
   }
 
-  if (field === "renderer" && /require\(["']react(?:\/jsx-runtime)?["']\)/.test(source)) {
-    throw new Error(`${manifest[field]} requires React at runtime; Freelens does not expose React as a resolvable package`);
+  const allowedRuntimeModules = new Set(["electron", ...builtinModules, ...builtinModules.map(name => `node:${name}`)]);
+  const bareRequires = [...source.matchAll(/require\(["']([^./][^"']*)["']\)/g)].map(match => match[1]);
+  const unresolvedModules = [...new Set(bareRequires.filter(name => !allowedRuntimeModules.has(name)))];
+  if (unresolvedModules.length > 0) {
+    throw new Error(`${manifest[field]} has unresolved runtime modules: ${unresolvedModules.join(", ")}`);
   }
 }
 

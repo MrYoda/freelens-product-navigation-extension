@@ -1,5 +1,5 @@
 import React from "react";
-import { Renderer } from "@freelensapp/extensions";
+import { Renderer } from "../common/freelens-api";
 import { defaultConfig, parseConfig } from "../common/products";
 import { productNavigationStore } from "../common/store";
 

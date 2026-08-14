@@ -61,11 +61,11 @@ entry points are emitted as CommonJS to match the extension loader. The archive
 has no package-manager runtime dependencies and can be installed offline.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.4.tgz`, and install it. Open a cluster
+`freelens-product-navigation-extension-0.1.5.tgz`, and install it. Open a cluster
 and choose **Products** in its sidebar.
 
 If an earlier version timed out, remove that failed installation and use the
-`0.1.4` archive. The version bump prevents a package-manager cache entry for
+`0.1.5` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
 
 Freelens validates its engine field more narrowly than npm semver: use
@@ -75,8 +75,10 @@ for the rejected extension to appear and eventually shows the misleading
 installation timeout.
 
 React is bundled into the renderer output rather than left as a CommonJS
-external. Freelens exposes its extension API to installed modules, but it does
-not make `react` or `react/jsx-runtime` resolvable from an extension directory.
+external. Freelens does not make `react`, `react/jsx-runtime`, or
+`@freelensapp/extensions` resolvable from an extension directory. The extension
+API is therefore read from the `globalThis.LensExtensions` object installed by
+the Freelens loader; its npm package is used for TypeScript types only.
 The UI uses class components so the bundled React copy does not depend on the
 host renderer's Hooks dispatcher. CSS is bundled as text and injected by the
 renderer entry point; no separately loaded stylesheet is required.

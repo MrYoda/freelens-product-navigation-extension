@@ -1,4 +1,4 @@
-import { Common } from "@freelensapp/extensions";
+import { Common } from "./freelens-api";
 import { defaultConfig, type ProductNavigationConfig } from "./products";
 
 export class ProductNavigationStore extends Common.Store.ExtensionStore<ProductNavigationConfig> {

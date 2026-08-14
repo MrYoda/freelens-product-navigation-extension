@@ -1,4 +1,4 @@
-import { Main } from "@freelensapp/extensions";
+import { Main } from "../common/freelens-api";
 import { productNavigationStore } from "../common/store";
 
 export default class ProductNavigationMainExtension extends Main.LensExtension {

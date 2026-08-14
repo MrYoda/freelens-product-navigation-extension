@@ -1,5 +1,5 @@
 import React from "react";
-import { Renderer } from "@freelensapp/extensions";
+import { Renderer } from "../common/freelens-api";
 import { ProductsPage, ProductsIcon } from "./products-page";
 import { Preferences } from "./preferences";
 import styles from "./styles.css?inline";
