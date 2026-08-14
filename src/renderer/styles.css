@@ -6,4 +6,5 @@
 .ProductNavigationPage table { border-collapse: collapse; width: 100%; }
 .ProductNavigationPage th, .ProductNavigationPage td { border-bottom: 1px solid var(--border-color); padding: 8px; text-align: left; }
 .ProductNavigationPreferences { min-width: 560px; }
+.ProductNavigationPreferences textarea { box-sizing: border-box; min-height: 320px; width: 100%; }
 .ProductNavigationActions { margin-top: 8px; }

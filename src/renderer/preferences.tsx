@@ -3,31 +3,24 @@ import { Renderer } from "../common/freelens-api";
 import { defaultConfig, parseConfig } from "../common/products";
 import { productNavigationStore } from "../common/store";
 
-interface PreferencesState { text: string; message: string }
-
-export class Preferences extends React.Component<Record<string, never>, PreferencesState> {
-  state: PreferencesState = {
-    text: JSON.stringify(productNavigationStore.get() ?? defaultConfig, null, 2),
-    message: "",
-  };
-
-  apply = () => {
+export function Preferences() {
+  let editor: HTMLTextAreaElement | null = null;
+  let status: HTMLSpanElement | null = null;
+  const apply = () => {
     try {
-      productNavigationStore.set(parseConfig(this.state.text));
-      this.setState({ message: "Configuration saved" });
+      productNavigationStore.set(parseConfig(editor?.value ?? ""));
+      if (status) status.textContent = "Configuration saved";
     } catch (error) {
-      this.setState({ message: error instanceof Error ? error.message : String(error) });
+      if (status) status.textContent = error instanceof Error ? error.message : String(error);
     }
   };
 
-  render() {
-    return <div className="ProductNavigationPreferences">
-      <Renderer.Component.Input multiline rows={16} value={this.state.text} onChange={(text: string) => this.setState({ text })} />
+  return <div className="ProductNavigationPreferences">
+      <textarea rows={16} defaultValue={JSON.stringify(productNavigationStore.get() ?? defaultConfig, null, 2)} ref={element => editor = element} />
       <div className="ProductNavigationActions">
-        <Renderer.Component.Button primary label="Apply" onClick={this.apply} />
-        <Renderer.Component.Button label="Reset" onClick={() => this.setState({ text: JSON.stringify(defaultConfig, null, 2) })} />
-        <span role="status">{this.state.message}</span>
+        <Renderer.Component.Button primary label="Apply" onClick={apply} />
+        <Renderer.Component.Button label="Reset" onClick={() => { if (editor) editor.value = JSON.stringify(defaultConfig, null, 2); }} />
+        <span role="status" ref={element => status = element} />
       </div>
     </div>;
-  }
 }

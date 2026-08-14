@@ -59,6 +59,10 @@ for (const field of ["main", "renderer"]) {
     if (!clusterPageId || clusterMenuPageId !== clusterPageId) {
       throw new Error(`${manifest[field]} must register a cluster page and a menu targeting that page`);
     }
+    const Page = extension.clusterPages[0].components?.Page;
+    if (typeof Page !== "function" || Page.prototype?.isReactComponent) {
+      throw new Error(`${manifest[field]} cluster page must be a function component because Freelens invokes it without new`);
+    }
     if (extension.appPreferences?.[0]?.title !== "Product navigation") {
       throw new Error(`${manifest[field]} must register Product navigation preferences`);
     }
