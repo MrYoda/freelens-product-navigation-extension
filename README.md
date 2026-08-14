@@ -54,22 +54,18 @@ pnpm pack:extension
 
 The build has two library entry points and intentionally has no renderer
 `index.html`: `dist/main/index.cjs` runs in the main process and
-`dist/renderer/index.cjs` is loaded by the Freelens renderer. Freelens and React
-are build-time development dependencies and remain external, so a normal build
-must not bundle the Freelens application into the extension. Both entry points
-are emitted as CommonJS because Freelens 1.10 loads installed extensions with
-`require()`. An ESM module may unpack successfully and then fail during loading;
-the UI surfaces that failure as a generic installation timeout. Dependencies are
-deliberately **not** declared as package runtime or peer dependencies: otherwise
-the Freelens installer invokes its package manager to resolve them from npm and
-an offline or restricted installation eventually reports a timeout.
+`dist/renderer/index.cjs` is loaded by the Freelens renderer. The Freelens API
+remains external so the build does not bundle the application itself; React is
+bundled because it is not resolvable from an installed extension directory. Both
+entry points are emitted as CommonJS to match the extension loader. The archive
+has no package-manager runtime dependencies and can be installed offline.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.3.tgz`, and install it. Open a cluster
+`freelens-product-navigation-extension-0.1.4.tgz`, and install it. Open a cluster
 and choose **Products** in its sidebar.
 
 If an earlier version timed out, remove that failed installation and use the
-`0.1.3` archive. The version bump prevents a package-manager cache entry for
+`0.1.4` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
 
 Freelens validates its engine field more narrowly than npm semver: use
@@ -77,6 +73,13 @@ Freelens validates its engine field more narrowly than npm semver: use
 range, Freelens rejects that manifest during discovery. Its installer then waits
 for the rejected extension to appear and eventually shows the misleading
 installation timeout.
+
+React is bundled into the renderer output rather than left as a CommonJS
+external. Freelens exposes its extension API to installed modules, but it does
+not make `react` or `react/jsx-runtime` resolvable from an extension directory.
+The UI uses class components so the bundled React copy does not depend on the
+host renderer's Hooks dispatcher. CSS is bundled as text and injected by the
+renderer entry point; no separately loaded stylesheet is required.
 
 ## Architecture
 

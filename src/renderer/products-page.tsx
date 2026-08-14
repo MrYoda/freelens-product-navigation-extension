@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React from "react";
 import { Renderer } from "@freelensapp/extensions";
 import { productsForCluster } from "../common/products";
 import { productNavigationStore } from "../common/store";
@@ -7,24 +7,28 @@ export function ProductsIcon() {
   return <Renderer.Component.Icon material="apps" />;
 }
 
-export function ProductsPage() {
-  const [filter, setFilter] = useState("");
-  const [showHidden, setShowHidden] = useState(false);
-  const cluster = Renderer.K8sApi.clusterContext.getActiveCluster()?.getName() ?? "";
-  const products = useMemo(() => productsForCluster(productNavigationStore.get(), cluster, showHidden)
-    .filter(product => `${product.name} ${product.description ?? ""} ${product.components.map(c => c.name).join(" ")}`
-      .toLowerCase().includes(filter.toLowerCase())), [cluster, filter, showHidden]);
+interface ProductsPageState { filter: string; showHidden: boolean }
 
-  const openPods = (namespace: string) => {
+export class ProductsPage extends React.Component<Record<string, never>, ProductsPageState> {
+  state: ProductsPageState = { filter: "", showHidden: false };
+
+  openPods = (namespace: string) => {
     Renderer.K8sApi.namespaceStore.context.setSelectedNamespaces([namespace]);
     Renderer.Navigation.navigate("/workloads/pods");
   };
 
-  return <div className="ProductNavigationPage">
+  render() {
+    const { filter, showHidden } = this.state;
+    const cluster = Renderer.K8sApi.clusterContext.getActiveCluster()?.getName() ?? "";
+    const products = productsForCluster(productNavigationStore.get(), cluster, showHidden)
+      .filter(product => `${product.name} ${product.description ?? ""} ${product.components.map(c => c.name).join(" ")}`
+        .toLowerCase().includes(filter.toLowerCase()));
+
+    return <div className="ProductNavigationPage">
     <header><h2>Products</h2><span>{cluster}</span></header>
     <div className="ProductNavigationToolbar">
-      <Renderer.Component.Input placeholder="Filter products" value={filter} onChange={setFilter} />
-      <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.target.checked)} /> Show hidden</label>
+      <Renderer.Component.Input placeholder="Filter products" value={filter} onChange={value => this.setState({ filter: value })} />
+      <label><input type="checkbox" checked={showHidden} onChange={event => this.setState({ showHidden: event.target.checked })} /> Show hidden</label>
     </div>
     {products.length === 0 && <p>No products are configured for this cluster.</p>}
     {products.map(product => <section key={product.name}>
@@ -32,8 +36,9 @@ export function ProductsPage() {
       <table><thead><tr><th>Component</th><th>Description</th><th>Namespace</th></tr></thead>
         <tbody>{product.components.map(component => component.targets.filter(target => target.cluster === cluster).map(target =>
           <tr key={`${component.name}:${target.namespace}`}><td>{component.name}</td><td>{component.description}</td><td>
-            <Renderer.Component.Button label={target.namespace} onClick={() => openPods(target.namespace)} />
+            <Renderer.Component.Button label={target.namespace} onClick={() => this.openPods(target.namespace)} />
           </td></tr>))}</tbody></table>
     </section>)}
-  </div>;
+    </div>;
+  }
 }

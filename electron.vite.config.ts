@@ -1,11 +1,7 @@
 import { resolve } from "node:path";
 import { defineConfig } from "electron-vite";
 
-const extensionExternals = [
-  "@freelensapp/extensions",
-  "react",
-  "react/jsx-runtime",
-];
+const extensionExternals = ["@freelensapp/extensions"];
 
 export default defineConfig({
   main: {

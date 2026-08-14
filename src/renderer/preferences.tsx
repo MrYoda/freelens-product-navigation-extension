@@ -1,25 +1,33 @@
-import React, { useState } from "react";
+import React from "react";
 import { Renderer } from "@freelensapp/extensions";
 import { defaultConfig, parseConfig } from "../common/products";
 import { productNavigationStore } from "../common/store";
 
-export function Preferences() {
-  const [text, setText] = useState(() => JSON.stringify(productNavigationStore.get() ?? defaultConfig, null, 2));
-  const [message, setMessage] = useState("");
-  const apply = () => {
+interface PreferencesState { text: string; message: string }
+
+export class Preferences extends React.Component<Record<string, never>, PreferencesState> {
+  state: PreferencesState = {
+    text: JSON.stringify(productNavigationStore.get() ?? defaultConfig, null, 2),
+    message: "",
+  };
+
+  apply = () => {
     try {
-      productNavigationStore.set(parseConfig(text));
-      setMessage("Configuration saved");
+      productNavigationStore.set(parseConfig(this.state.text));
+      this.setState({ message: "Configuration saved" });
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      this.setState({ message: error instanceof Error ? error.message : String(error) });
     }
   };
-  return <div className="ProductNavigationPreferences">
-    <Renderer.Component.Input multiline rows={16} value={text} onChange={setText} />
-    <div className="ProductNavigationActions">
-      <Renderer.Component.Button primary label="Apply" onClick={apply} />
-      <Renderer.Component.Button label="Reset" onClick={() => setText(JSON.stringify(defaultConfig, null, 2))} />
-      <span role="status">{message}</span>
-    </div>
-  </div>;
+
+  render() {
+    return <div className="ProductNavigationPreferences">
+      <Renderer.Component.Input multiline rows={16} value={this.state.text} onChange={text => this.setState({ text })} />
+      <div className="ProductNavigationActions">
+        <Renderer.Component.Button primary label="Apply" onClick={this.apply} />
+        <Renderer.Component.Button label="Reset" onClick={() => this.setState({ text: JSON.stringify(defaultConfig, null, 2) })} />
+        <span role="status">{this.state.message}</span>
+      </div>
+    </div>;
+  }
 }

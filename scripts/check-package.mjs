@@ -29,6 +29,10 @@ for (const field of ["main", "renderer"]) {
   if (/^\s*import\s/m.test(source)) {
     throw new Error(`${manifest[field]} contains an ESM import but Freelens 1.10 expects a CommonJS entry point`);
   }
+
+  if (field === "renderer" && /require\(["']react(?:\/jsx-runtime)?["']\)/.test(source)) {
+    throw new Error(`${manifest[field]} requires React at runtime; Freelens does not expose React as a resolvable package`);
+  }
 }
 
 console.log(`Package ${manifest.name}@${manifest.version} has main and renderer entry points and no runtime dependencies.`);
