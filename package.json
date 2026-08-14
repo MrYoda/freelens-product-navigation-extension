@@ -1,14 +1,10 @@
 {
   "name": "freelens-product-navigation-extension",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Product-oriented navigation for Freelens",
   "type": "module",
-  "main": "dist/main/index.js",
-  "renderer": "dist/renderer/index.js",
-  "exports": {
-    ".": "./dist/main/index.js",
-    "./renderer": "./dist/renderer/index.js"
-  },
+  "main": "dist/main/index.cjs",
+  "renderer": "dist/renderer/index.cjs",
   "files": [
     "dist",
     "README.md",

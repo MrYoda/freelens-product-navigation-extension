@@ -14,7 +14,7 @@ export default defineConfig({
       rollupOptions: {
         input: resolve("src/main/index.ts"),
         external: extensionExternals,
-        output: { format: "es", entryFileNames: "index.js" },
+        output: { format: "cjs", entryFileNames: "index.cjs", exports: "auto" },
       },
     },
   },
@@ -26,7 +26,7 @@ export default defineConfig({
         // explicit Rollup input is provided. Extensions have no index.html.
         input: resolve("src/renderer/index.tsx"),
         external: extensionExternals,
-        output: { format: "es", entryFileNames: "index.js" },
+        output: { format: "cjs", entryFileNames: "index.cjs", exports: "auto" },
       },
     },
   },

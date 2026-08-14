@@ -53,20 +53,23 @@ pnpm pack:extension
 ```
 
 The build has two library entry points and intentionally has no renderer
-`index.html`: `dist/main/index.js` runs in the main process and
-`dist/renderer/index.js` is loaded by the Freelens renderer. Freelens and React
+`index.html`: `dist/main/index.cjs` runs in the main process and
+`dist/renderer/index.cjs` is loaded by the Freelens renderer. Freelens and React
 are build-time development dependencies and remain external, so a normal build
-must not bundle the Freelens application into the extension. They are
+must not bundle the Freelens application into the extension. Both entry points
+are emitted as CommonJS because Freelens 1.10 loads installed extensions with
+`require()`. An ESM module may unpack successfully and then fail during loading;
+the UI surfaces that failure as a generic installation timeout. Dependencies are
 deliberately **not** declared as package runtime or peer dependencies: otherwise
 the Freelens installer invokes its package manager to resolve them from npm and
 an offline or restricted installation eventually reports a timeout.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.1.tgz`, and install it. Open a cluster
+`freelens-product-navigation-extension-0.1.2.tgz`, and install it. Open a cluster
 and choose **Products** in its sidebar.
 
-If version `0.1.0` previously timed out, remove that failed installation and use
-the `0.1.1` archive. The version bump prevents a package-manager cache entry for
+If an earlier version timed out, remove that failed installation and use the
+`0.1.2` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
 
 ## Architecture
