@@ -61,11 +61,13 @@ entry points are emitted as CommonJS to match the extension loader. The archive
 has no package-manager runtime dependencies and can be installed offline.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.5.tgz`, and install it. Open a cluster
-and choose **Products** in its sidebar.
+`freelens-product-navigation-extension-0.1.6.tgz`, and install it. The extension
+registers **Products** in the application menu (showing all configured targets)
+and in each cluster sidebar (showing targets for that active cluster). Its JSON
+editor is under **Preferences → Extensions → Product navigation**.
 
 If an earlier version timed out, remove that failed installation and use the
-`0.1.5` archive. The version bump prevents a package-manager cache entry for
+`0.1.6` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
 
 Freelens validates its engine field more narrowly than npm semver: use

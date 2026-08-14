@@ -13,9 +13,15 @@ if (!document.getElementById(styleId)) {
 }
 
 export default class ProductNavigationRendererExtension extends Renderer.LensExtension {
-  clusterPages = [{ id: "product-navigation", components: { Page: ProductsPage } }];
+  appPages = [{ id: "product-navigation-app", components: { Page: ProductsPage } }];
+  appPageMenus = [{
+    target: { pageId: "product-navigation-app" },
+    title: "Products",
+    components: { Icon: ProductsIcon },
+  }];
+  clusterPages = [{ id: "product-navigation-cluster", components: { Page: ProductsPage } }];
   clusterPageMenus = [{
-    target: { pageId: "product-navigation" },
+    target: { pageId: "product-navigation-cluster" },
     title: "Products",
     components: { Icon: ProductsIcon },
   }];
@@ -23,4 +29,8 @@ export default class ProductNavigationRendererExtension extends Renderer.LensExt
     title: "Product navigation",
     components: { Hint: () => <span>Configure products, components, clusters and namespaces as JSON.</span>, Input: Preferences },
   }];
+
+  onActivate() {
+    console.info("Product Navigation extension activated: app page, cluster page, and preferences registered");
+  }
 }

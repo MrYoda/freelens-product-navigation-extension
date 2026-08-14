@@ -50,12 +50,12 @@ export function parseConfig(input: string): ProductNavigationConfig {
   return config;
 }
 
-export function productsForCluster(config: ProductNavigationConfig, cluster: string, showHidden = false): Product[] {
+export function productsForCluster(config: ProductNavigationConfig, cluster?: string, showHidden = false): Product[] {
   return config.products
     .map(product => ({
       ...product,
       components: product.components.filter(component =>
-        (showHidden || !component.hidden) && component.targets.some(target => target.cluster === cluster)),
+        (showHidden || !component.hidden) && (!cluster || component.targets.some(target => target.cluster === cluster))),
     }))
     .filter(product => product.components.length > 0);
 }

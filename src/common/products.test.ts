@@ -12,6 +12,7 @@ test("parses and filters product configuration", () => {
   assert.deepEqual(productsForCluster(config, "dev").map(p => p.components.map(c => c.name)), [["API"]]);
   assert.equal(productsForCluster(config, "prod").length, 0);
   assert.equal(productsForCluster(config, "dev", true)[0].components.length, 2);
+  assert.deepEqual(productsForCluster(config).map(p => p.components.map(c => c.name)), [["API"]]);
 });
 
 test("reports a precise validation path", () => {
