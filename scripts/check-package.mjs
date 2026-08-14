@@ -47,8 +47,9 @@ for (const field of ["main", "renderer"]) {
   globalThis.document ??= { getElementById: () => ({}) };
 
   const exported = createRequire(import.meta.url)(fileURLToPath(entryPoint));
-  if (typeof exported?.default !== "function") {
-    throw new Error(`${manifest[field]} must evaluate to a CommonJS module with a default extension class`);
+  const extensionClass = typeof exported === "function" ? exported : exported?.default;
+  if (typeof extensionClass !== "function") {
+    throw new Error(`${manifest[field]} must evaluate to a CommonJS extension class (directly or as .default)`);
   }
 }
 

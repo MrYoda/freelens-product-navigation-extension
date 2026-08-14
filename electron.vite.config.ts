@@ -7,7 +7,12 @@ export default defineConfig({
       outDir: "dist/main",
       rollupOptions: {
         input: resolve("src/main/index.ts"),
-        output: { format: "cjs", entryFileNames: "index.cjs", exports: "named" },
+        output: {
+          format: "cjs",
+          entryFileNames: "index.cjs",
+          exports: "auto",
+          footer: "if (typeof module.exports === 'function') module.exports.default = module.exports;",
+        },
       },
     },
   },
@@ -18,7 +23,12 @@ export default defineConfig({
         // electron-vite treats renderer builds as applications unless an
         // explicit Rollup input is provided. Extensions have no index.html.
         input: resolve("src/renderer/index.tsx"),
-        output: { format: "cjs", entryFileNames: "index.cjs", exports: "named" },
+        output: {
+          format: "cjs",
+          entryFileNames: "index.cjs",
+          exports: "auto",
+          footer: "if (typeof module.exports === 'function') module.exports.default = module.exports;",
+        },
       },
     },
   },
