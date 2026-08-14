@@ -1,6 +1,6 @@
 {
   "name": "freelens-product-navigation-extension",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Product-oriented navigation for Freelens",
   "type": "module",
   "main": "dist/main/index.js",
@@ -19,14 +19,11 @@
     "dev": "electron-vite dev",
     "test": "node --experimental-strip-types --test src/**/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "pack:extension": "pnpm build && pnpm pack"
+    "check:package": "node scripts/check-package.mjs",
+    "pack:extension": "pnpm build && pnpm check:package && pnpm pack"
   },
   "engines": {
     "freelens": ">=1.10.0"
-  },
-  "peerDependencies": {
-    "@freelensapp/extensions": ">=1.10.0",
-    "react": ">=17"
   },
   "devDependencies": {
     "@freelensapp/extensions": "^1.10.0",
