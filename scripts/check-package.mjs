@@ -1,5 +1,7 @@
 import { access, readFile } from "node:fs/promises";
 import { builtinModules } from "node:module";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const runtimeDependencyFields = ["dependencies", "optionalDependencies", "peerDependencies"];
@@ -30,15 +32,23 @@ for (const field of ["main", "renderer"]) {
   if (/^\s*import\s/m.test(source)) {
     throw new Error(`${manifest[field]} contains an ESM import but Freelens 1.10 expects a CommonJS entry point`);
   }
-  if (!/exports\.default\s*=/.test(source)) {
-    throw new Error(`${manifest[field]} must expose the extension class as exports.default`);
-  }
-
   const allowedRuntimeModules = new Set(["electron", ...builtinModules, ...builtinModules.map(name => `node:${name}`)]);
   const bareRequires = [...source.matchAll(/require\(["']([^./][^"']*)["']\)/g)].map(match => match[1]);
   const unresolvedModules = [...new Set(bareRequires.filter(name => !allowedRuntimeModules.has(name)))];
   if (unresolvedModules.length > 0) {
     throw new Error(`${manifest[field]} has unresolved runtime modules: ${unresolvedModules.join(", ")}`);
+  }
+
+  globalThis.LensExtensions = {
+    Common: { Store: { ExtensionStore: class {} } },
+    Main: { LensExtension: class {} },
+    Renderer: { LensExtension: class {}, Component: {}, K8sApi: {}, Navigation: {} },
+  };
+  globalThis.document ??= { getElementById: () => ({}) };
+
+  const exported = createRequire(import.meta.url)(fileURLToPath(entryPoint));
+  if (typeof exported?.default !== "function") {
+    throw new Error(`${manifest[field]} must evaluate to a CommonJS module with a default extension class`);
   }
 }
 

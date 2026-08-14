@@ -61,13 +61,13 @@ entry points are emitted as CommonJS to match the extension loader. The archive
 has no package-manager runtime dependencies and can be installed offline.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.7.tgz`, and install it. The extension
+`freelens-product-navigation-extension-0.1.8.tgz`, and install it. The extension
 registers **Products** in the application menu (showing all configured targets)
 and in each cluster sidebar (showing targets for that active cluster). Its JSON
 editor is under **Preferences → Extensions → Product navigation**.
 
 If an earlier version timed out, remove that failed installation and use the
-`0.1.7` archive. The version bump prevents a package-manager cache entry for
+`0.1.8` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
 
 Freelens validates its engine field more narrowly than npm semver: use
@@ -85,8 +85,8 @@ The UI uses class components so the bundled React copy does not depend on the
 host renderer's Hooks dispatcher. CSS is bundled as text and injected by the
 renderer entry point; no separately loaded stylesheet is required.
 
-Both CommonJS entry points use a named CommonJS export object containing
-`exports.default`. This detail is required by the Freelens extension loader.
+Both CommonJS entry points evaluate to an export object containing a callable
+`.default` extension class. This detail is required by the Freelens loader.
 Rollup's `exports: "auto"` optimization emits `module.exports = Extension` for a
 default-only module; that file can be required without an error, but the loader
 then sees no `.default` extension class and silently registers no pages or menus.
