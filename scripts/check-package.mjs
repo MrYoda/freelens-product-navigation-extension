@@ -3,6 +3,10 @@ import { access, readFile } from "node:fs/promises";
 const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const runtimeDependencyFields = ["dependencies", "optionalDependencies", "peerDependencies"];
 
+if (!/^\^\d+\.\d+\.\d+$/.test(manifest.engines?.freelens ?? "")) {
+  throw new Error("package.json.engines.freelens must use the ^major.minor.patch format accepted by Freelens");
+}
+
 for (const field of runtimeDependencyFields) {
   const dependencies = Object.keys(manifest[field] ?? {});
   if (dependencies.length > 0) {

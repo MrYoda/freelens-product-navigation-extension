@@ -65,12 +65,18 @@ the Freelens installer invokes its package manager to resolve them from npm and
 an offline or restricted installation eventually reports a timeout.
 
 In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.2.tgz`, and install it. Open a cluster
+`freelens-product-navigation-extension-0.1.3.tgz`, and install it. Open a cluster
 and choose **Products** in its sidebar.
 
 If an earlier version timed out, remove that failed installation and use the
-`0.1.2` archive. The version bump prevents a package-manager cache entry for
+`0.1.3` archive. The version bump prevents a package-manager cache entry for
 the failed archive from being reused.
+
+Freelens validates its engine field more narrowly than npm semver: use
+`"engines": { "freelens": "^1.10.0" }`. Although `>=1.10.0` is a valid npm
+range, Freelens rejects that manifest during discovery. Its installer then waits
+for the rejected extension to appear and eventually shows the misleading
+installation timeout.
 
 ## Architecture
 
