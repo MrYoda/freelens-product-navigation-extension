@@ -35,6 +35,8 @@ export const ProductsPage = () => {
   }).filter(item => item.components.length > 0);
   const count = visibleServices.reduce((sum, item) => sum + item.components.length, 0);
 
+  if (!store.loaded) return <div className="ProductNavigationPage" data-testid="product-navigation-page"><p>Loading product navigation settings…</p></div>;
+
   return <div className="ProductNavigationPage" data-testid="product-navigation-page">
     <header><div><h1>Products</h1><p>Select a cluster to open the component namespace.</p></div>
       <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.currentTarget.checked)} /> Show hidden</label>

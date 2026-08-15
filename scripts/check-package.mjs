@@ -40,7 +40,7 @@ for (const field of ["main", "renderer"]) {
   }
 
   globalThis.LensExtensions = {
-    Common: { Store: { ExtensionStore: class { loadExtension() {} } } }, Main: { Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, LensExtension: class {} },
+    Common: { Store: { ExtensionStore: class { static getInstanceOrCreate() { return this.instance ??= new this(); } loadExtension() {} } } }, Main: { Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, LensExtension: class {} },
     Renderer: {
       LensExtension: class {},
       Catalog: { getActiveCluster: () => ({ name: "test-cluster" }) },
@@ -49,7 +49,7 @@ for (const field of ["main", "renderer"]) {
       Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, Navigation: { navigate: () => undefined },
     },
   };
-  globalThis.Mobx = { makeObservable: () => undefined, observable: Symbol("observable") };
+  globalThis.Mobx = { action: Symbol("action"), makeObservable: () => undefined, observable: Symbol("observable") };
   globalThis.React = {};
   globalThis.ReactJsxRuntime = { Fragment: Symbol("Fragment"), jsx: () => ({}), jsxs: () => ({}) };
   globalThis.document ??= { getElementById: () => ({}) };
@@ -70,6 +70,9 @@ for (const field of ["main", "renderer"]) {
     }
     if (extension.globalPages?.[0]?.id !== "product-navigation-global" || typeof extension.topBarItems?.[0]?.components?.Item !== "function") {
       throw new Error(`${manifest[field]} must register the global Products page and its top-bar entry point`);
+    }
+    if (extension.welcomeMenus?.[0]?.title !== "Products") {
+      throw new Error(`${manifest[field]} must register a visible Products action on Welcome`);
     }
     const Page = extension.clusterPages[0].components?.Page;
     if (typeof Page !== "function" || Page.prototype?.isReactComponent) {

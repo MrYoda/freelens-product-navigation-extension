@@ -1,4 +1,4 @@
-.ProductNavigationPage { box-sizing: border-box; height: 100%; overflow: auto; padding: 24px; }
+.ProductNavigationPage { background: var(--mainBackground, #fff); box-sizing: border-box; height: 100%; overflow: auto; padding: 24px; position: relative; z-index: 2; }
 .ProductNavigationTopBarButton { appearance: none; background: transparent; border: 0; color: inherit; cursor: pointer; padding: 0; }
 .ProductNavigationPage header { align-items: flex-start; display: flex; justify-content: space-between; }
 .ProductNavigationPage h1 { margin: 0; }

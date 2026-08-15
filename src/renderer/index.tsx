@@ -15,6 +15,10 @@ if (!document.getElementById(styleId)) {
 }
 
 export default class ProductNavigationRendererExtension extends Renderer.LensExtension {
+  private async openGlobalProducts() {
+    await (this as unknown as { navigate: (pageId: string) => Promise<void> }).navigate("product-navigation-global");
+  }
+
   globalPages = [{ id: "product-navigation-global", components: { Page: ProductsPage } }];
   clusterPages = [{ id: "product-navigation-cluster", components: { Page: ProductsPage } }];
   clusterPageMenus = [{ id: "product-navigation-cluster", target: { pageId: "product-navigation-cluster" }, title: "Products", components: { Icon: ProductsIcon } }];
@@ -22,10 +26,15 @@ export default class ProductNavigationRendererExtension extends Renderer.LensExt
     aria-label="Products"
     className="ProductNavigationTopBarButton"
     data-testid="product-navigation-top-bar-button"
-    onClick={() => void (this as unknown as { navigate: (pageId: string) => Promise<void> }).navigate("product-navigation-global")}
+    onClick={() => void this.openGlobalProducts()}
     title="Products"
     type="button"
   ><Renderer.Component.Icon material="account_tree" /></button> } }];
+  welcomeMenus = [{
+    title: "Products",
+    icon: "account_tree",
+    click: () => this.openGlobalProducts(),
+  }];
   appPreferences = [{
     title: "Product navigation",
     components: { Hint: () => <span>Configure clusters, products, services, components, and hidden components as JSON.</span>, Input: () => <Preferences /> },

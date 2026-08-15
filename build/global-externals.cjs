@@ -1,6 +1,6 @@
 const exportNames = {
   "@freelensapp/extensions": ["Common", "Main", "Renderer"],
-  mobx: ["makeObservable", "observable"],
+  mobx: ["action", "makeObservable", "observable"],
   react: ["Fragment", "createElement", "useEffect", "useMemo", "useState"],
   "react/jsx-runtime": ["Fragment", "jsx", "jsxs"],
 };

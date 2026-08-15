@@ -7,16 +7,23 @@ const format = (value: ProductNavigationPreferences) => JSON.stringify(value, nu
 export const Preferences = () => {
   const store = getProductNavigationStore();
   const storedJson = format(store.navigation);
-  const [draft, setDraft] = React.useState(storedJson);
-  const validation = React.useMemo(() => parseConfig(draft), [draft]);
-  const hasChanges = draft !== storedJson;
+  const previousStoredJson = React.useRef(storedJson);
+  const [draft, setDraft] = React.useState<string>();
+  const validation = React.useMemo(() => draft === undefined ? { errors: [] } : parseConfig(draft), [draft]);
+  const hasChanges = draft !== undefined && draft !== storedJson;
 
-  React.useEffect(() => { if (!hasChanges) setDraft(storedJson); }, [hasChanges, storedJson]);
+  React.useEffect(() => {
+    if (!store.loaded) return;
+    setDraft(current => current === undefined || current === previousStoredJson.current ? storedJson : current);
+    previousStoredJson.current = storedJson;
+  }, [store.loaded, storedJson]);
   const apply = () => {
     if (!validation.value) return;
     store.setNavigation(validation.value);
     setDraft(format(validation.value));
   };
+
+  if (!store.loaded || draft === undefined) return <p>Loading product navigation settings…</p>;
 
   return <div className="ProductNavigationPreferences">
     <textarea rows={20} value={draft} onChange={event => setDraft(event.currentTarget.value)} />

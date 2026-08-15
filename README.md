@@ -6,7 +6,7 @@ the original Freelens fork into an independently installable extension.
 ## Features
 
 - a global **Products** page, opened with the `account_tree` button in the
-  application top bar;
+  application top bar or the **Products** action on Welcome;
 - the same page inside every cluster under **Products** in the sidebar;
 - product/service/component filtering and persistent hidden components;
 - one-click cross-cluster navigation which activates the selected catalog
@@ -71,7 +71,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `freelens-product-navigation-extension-0.2.0.tgz` from the Freelens
+Install `freelens-product-navigation-extension-0.2.1.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
@@ -98,12 +98,17 @@ start Freelens 1.10.3 with Chromium remote debugging enabled, and run:
 
 ```sh
 CDP_PORT=9222 pnpm smoke:gui
+EXPECT_PRODUCT_NAME="Commerce" SET_PRODUCT_NAME="Commerce persisted" pnpm smoke:settings
 ```
 
 The smoke test drives the actual Freelens renderer through the Chrome DevTools
 Protocol. It opens the global page and verifies both complete flows:
 `Cluster A → team-a → cluster-a-pod` and
 `Cluster B → team-b → cluster-b-pod`.
+The settings smoke test edits the actual Preferences textarea and presses
+**Apply**. Restart Freelens and run it again with only
+`EXPECT_PRODUCT_NAME="Commerce persisted"` to verify disk persistence and UI
+rehydration across application launches.
 
 ## Architecture
 
