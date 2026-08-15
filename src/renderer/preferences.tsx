@@ -36,7 +36,7 @@ export const Preferences = () => {
     {validation.value && <div className="ProductNavigationPreview">
       <strong>Preview:</strong> {getSummary(validation.value)}
       <ul>{validation.value.services.map(service => <li key={service.id}>{service.name}<ul>
-        {service.components.map(component => <li key={component.id}>{component.name} ({Array.isArray(component.namespace) ? component.namespace.join(", ") : component.namespace}, {component.clusters.length} clusters)</li>)}
+        {service.components.map(component => <li key={component.id}>{component.name} ({component.targets.length} namespaces, {component.targets.reduce((total, target) => total + target.clusters.length, 0)} targets)</li>)}
       </ul></li>)}</ul>
     </div>}
   </div>;

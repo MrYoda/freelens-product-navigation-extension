@@ -50,14 +50,16 @@ const waitFor = async (description, operation) => {
 };
 
 await command("Runtime.enable");
-const rootContext = await waitFor("application renderer", async () => {
+const findRootContext = async () => {
   for (const context of contexts.values()) {
     if (!context.auxData?.isDefault) continue;
     const hostname = await evaluate("location.hostname", context.id);
     if (hostname === "renderer.freelens.app") return context.id;
   }
-});
+};
+let rootContext = await waitFor("application renderer", findRootContext);
 const openProducts = async () => {
+  rootContext = await waitFor("application renderer", findRootContext);
   await evaluate("document.querySelector('[data-testid=product-navigation-top-bar-button]')?.click()", rootContext);
   await waitFor("global Products page", async () => {
     const state = await evaluate(`({
@@ -65,7 +67,7 @@ const openProducts = async () => {
       text: document.body.innerText,
       productsAreTopmost: Boolean(document.elementsFromPoint(500, 200)[0]?.closest?.("[data-testid=product-navigation-page]")),
     })`, rootContext);
-    return state.href.endsWith("/product-navigation-global") && state.text.includes("Checkout A") && state.productsAreTopmost && state;
+    return state.href.endsWith("/product-navigation-global") && state.text.includes("Products") && state.productsAreTopmost && state;
   });
 };
 const openTarget = async (buttonText, namespace, podName) => {
@@ -80,6 +82,12 @@ const openTarget = async (buttonText, namespace, podName) => {
 };
 
 await openProducts();
+await evaluate(`(() => {
+  const input = document.querySelector(".ProductNavigationFilter");
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+})()`, rootContext);
+await waitFor("unfiltered Products table", () => evaluate("document.querySelector('[data-testid=product-navigation-page]').innerText.includes('Checkout A')", rootContext));
 assert(await evaluate(`document.querySelector('[data-testid="home-button"]').parentElement.nextElementSibling.querySelector('[data-testid="product-navigation-top-bar-button"]') !== null`, rootContext), "Products follows Home in the top bar");
 await evaluate(`(() => {
   const input = document.querySelector(".ProductNavigationFilter");

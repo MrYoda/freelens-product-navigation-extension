@@ -6,8 +6,6 @@ import { navigateToProductTarget } from "./navigation";
 export const ProductsIcon = () => <Renderer.Component.Icon material="account_tree" />;
 
 const pageState = { filter: "", showHidden: false, scrollTop: 0 };
-const namespacesOf = (namespace: string | string[]) => Array.isArray(namespace) ? namespace : [namespace];
-
 export const ProductsPage = () => {
   const store = getProductNavigationStore();
   const navigation = store.navigation;
@@ -33,8 +31,11 @@ export const ProductsPage = () => {
     const components = service.components.filter(component => {
       if (isHidden(service.id, component.id) && !showHidden) return false;
       if (!query) return true;
-      const clusterTerms = component.clusters.flatMap(id => [id, clustersById.get(id)?.name]);
-      return [service.id, service.name, product?.id, product?.name, component.id, component.name, ...namespacesOf(component.namespace), ...clusterTerms]
+      const targetTerms = component.targets.flatMap(target => [
+        target.namespace,
+        ...target.clusters.flatMap(id => [id, clustersById.get(id)?.name]),
+      ]);
+      return [service.id, service.name, product?.id, product?.name, component.id, component.name, ...targetTerms]
         .some(term => term?.toLocaleLowerCase().includes(query));
     });
     return { service, components };
@@ -54,11 +55,11 @@ export const ProductsPage = () => {
           const hidden = isHidden(service.id, component.id);
           return <tr className={hidden ? "is-hidden" : undefined} key={`${service.id}:${component.id}`}>
             {index === 0 && <td rowSpan={components.length}>{service.name}</td>}<td>{component.name}</td><td>
-              {namespacesOf(component.namespace).map(namespace => <div className="ProductNavigationNamespaceTarget" key={namespace}>
-                <div className="ProductNavigationNamespace">{namespace}</div><div className="ProductNavigationTargets">
-                  {component.clusters.map(clusterId => <button aria-label={`Open ${component.name} in ${namespace} on ${clustersById.get(clusterId)?.name ?? clusterId}`} className="ProductNavigationTarget" key={clusterId} onClick={() => {
-                    navigateToProductTarget(namespace, clusterId).catch(reason => Renderer.Component.Notifications.error(reason instanceof Error ? reason.message : String(reason)));
-                  }}>{clustersById.get(clusterId)?.name ?? clusterId}</button>)}
+              {component.targets.map(target => <div className="ProductNavigationNamespaceTarget" key={target.namespace}>
+                <div className="ProductNavigationNamespace">{target.namespace}</div><div className="ProductNavigationTargets">
+                  {target.clusters.map(clusterId => <Renderer.Component.Button aria-label={`Open ${component.name} in ${target.namespace} on ${clustersById.get(clusterId)?.name ?? clusterId}`} className="ProductNavigationTarget" key={clusterId} label={clustersById.get(clusterId)?.name ?? clusterId} primary onClick={() => {
+                    navigateToProductTarget(target.namespace, clusterId).catch(reason => Renderer.Component.Notifications.error(reason instanceof Error ? reason.message : String(reason)));
+                  }} />)}
                 </div>
               </div>)}</td><td><label><input type="checkbox" checked={hidden} onChange={event => setHidden(service.id, component.id, event.currentTarget.checked)} /> Hide</label></td>
           </tr>;

@@ -8,10 +8,7 @@
 .ProductNavigationTargets, .ProductNavigationActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .ProductNavigationNamespaceTarget + .ProductNavigationNamespaceTarget { margin-top: 12px; }
 .ProductNavigationNamespace { font-family: monospace; margin-bottom: 6px; }
-.ProductNavigationTarget { background: var(--colorOk, #00a98f); border: 1px solid transparent; border-radius: 4px; color: #fff; cursor: pointer; font-weight: 600; padding: 6px 10px; transition: filter .15s ease, transform .15s ease; }
-.ProductNavigationTarget:hover { filter: brightness(1.12); }
-.ProductNavigationTarget:active { transform: translateY(1px); }
-.ProductNavigationTarget:focus-visible { outline: 2px solid var(--primary, #00a98f); outline-offset: 2px; }
+.ProductNavigationTarget { font-weight: 600; }
 .ProductNavigationPage tr.is-hidden { opacity: .55; text-decoration: line-through; }
 .ProductNavigationErrors { color: var(--colorError); }
 .ProductNavigationPreferences { min-width: 620px; }

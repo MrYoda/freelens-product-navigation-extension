@@ -6,12 +6,12 @@ const valid = {
   clusters: [{ id: "cluster-a", name: "Cluster A" }],
   products: [{ id: "product-a", name: "Product A" }],
   services: [{ id: "service-a", name: "Service A", productId: "product-a", components: [
-    { id: "component-a", name: "API", namespace: "shop", clusters: ["cluster-a"] },
+    { id: "component-a", name: "API", targets: [{ namespace: "shop", clusters: ["cluster-a"] }] },
   ] }],
   hidden: { services: { "service-a": { components: ["component-a"] } } },
 };
 
-test("accepts the original Freelens product navigation format unchanged", () => {
+test("accepts the explicit target format unchanged", () => {
   assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: valid });
 });
 
@@ -19,26 +19,43 @@ test("normalizes omitted nested collections", () => {
   assert.deepEqual(normalizeConfig(), { clusters: [], products: [], services: [], hidden: { services: {} } });
 });
 
-test("accepts multiple namespaces and counts every namespace/cluster target", () => {
+test("accepts explicit namespace and cluster target pairs", () => {
   const multiple = structuredClone(valid);
-  (multiple.services[0].components[0] as { namespace: string | string[] }).namespace = ["shop-dev", "shop-stage"];
+  multiple.services[0].components[0].targets = [
+    { namespace: "shop-dev", clusters: ["cluster-a"] },
+    { namespace: "shop-stage", clusters: ["cluster-a"] },
+  ];
   const result = parseConfig(JSON.stringify(multiple));
   assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.value?.services[0].components[0].namespace, ["shop-dev", "shop-stage"]);
+  assert.deepEqual(result.value?.services[0].components[0].targets, multiple.services[0].components[0].targets);
 });
 
-test("rejects empty and duplicate namespaces", () => {
+test("rejects empty targets, duplicate namespaces, and empty cluster lists", () => {
   const multiple = structuredClone(valid);
-  (multiple.services[0].components[0] as { namespace: string | string[] }).namespace = ["shop", "shop", ""];
+  multiple.services[0].components[0].targets = [
+    { namespace: "shop", clusters: ["cluster-a"] },
+    { namespace: "shop", clusters: [] },
+  ];
   const errors = parseConfig(JSON.stringify(multiple)).errors.join("\n");
   assert.match(errors, /Duplicate id "shop"/);
-  assert.match(errors, /namespace\[2\] must be a non-empty string/);
+  assert.match(errors, /clusters must contain at least one cluster/);
+});
+
+test("migrates legacy namespace and clusters to explicit targets", () => {
+  const legacy = structuredClone(valid) as unknown as { services: Array<{ components: Array<Record<string, unknown>> }> };
+  legacy.services[0].components[0] = { id: "component-a", name: "API", namespace: ["shop-dev", "shop-stage"], clusters: ["cluster-a"] };
+  const result = parseConfig(JSON.stringify(legacy));
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.value?.services[0].components[0].targets, [
+    { namespace: "shop-dev", clusters: ["cluster-a"] },
+    { namespace: "shop-stage", clusters: ["cluster-a"] },
+  ]);
 });
 
 test("validates duplicate ids and cross references", () => {
   const invalid = structuredClone(valid);
   invalid.clusters.push({ id: "cluster-a", name: "Duplicate" });
-  invalid.services[0].components[0].clusters = ["missing"];
+  invalid.services[0].components[0].targets[0].clusters = ["missing"];
   invalid.hidden.services["service-a"].components = ["missing"];
   const errors = parseConfig(JSON.stringify(invalid)).errors.join("\n");
   assert.match(errors, /Duplicate id "cluster-a"/);

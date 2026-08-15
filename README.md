@@ -24,10 +24,11 @@ fork or private source import is required.
 
 ## Configuration format
 
-The format is intentionally identical to the `productNavigation` preference in
-the original fork. Cluster IDs in component `clusters` refer to entries in the
-top-level `clusters` array. A configured cluster ID is resolved against either
-the catalog entity ID or its name.
+The format evolves the original fork preference by replacing its ambiguous
+component-level `namespace` and `clusters` fields with explicit `targets`.
+Cluster IDs in each target refer to entries in the top-level `clusters` array.
+A configured cluster ID is resolved against either the catalog entity ID or
+its name.
 
 ```json
 {
@@ -47,8 +48,10 @@ the catalog entity ID or its name.
         {
           "id": "checkout-api",
           "name": "API",
-          "namespace": ["checkout-dev", "checkout-stage"],
-          "clusters": ["development", "production"]
+          "targets": [
+            { "namespace": "checkout-dev", "clusters": ["development"] },
+            { "namespace": "checkout-stage", "clusters": ["production"] }
+          ]
         }
       ]
     }
@@ -63,9 +66,16 @@ the catalog entity ID or its name.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
-component is validated before **Apply** is enabled. `namespace` accepts either
-a single string (the original format) or an array. Every namespace is shown in
-the same component row and can be opened on every configured cluster.
+component is validated before **Apply** is enabled. Each component has a
+`targets` array; every target explicitly binds one `namespace` to the clusters
+where that namespace exists. Targets are shown in the same component row, so
+different environments do not create duplicate component rows or accidental
+namespace × cluster combinations.
+
+Existing saved configurations are migrated on load: a legacy string becomes
+one target, while the briefly supported namespace array becomes one target per
+namespace with its former cluster list. Saving the settings writes only the new
+explicit `targets` shape.
 
 ## Build and install
 
@@ -77,7 +87,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `mryoda-freelens-product-navigation-extension-0.3.0.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.1.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
@@ -140,6 +150,8 @@ rehydration across application launches.
   preferences.
 - `src/renderer/navigation.ts` performs catalog activation and the readiness
   handshake needed when a cluster frame has not been created yet.
+- `docs/freelens-ux-research.md` evaluates Hotbar, quick-palette, and
+  multi-cluster dashboard options against the Freelens 1.10.3 extension API.
 
 The renderer deliberately distinguishes the application window from cluster
 frames before accessing Kubernetes stores: those stores are unavailable in the

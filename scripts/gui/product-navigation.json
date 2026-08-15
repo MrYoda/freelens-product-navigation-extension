@@ -13,10 +13,13 @@
       "name": "Checkout",
       "productId": "commerce",
       "components": [
-        { "id": "checkout-a", "name": "Checkout A", "namespace": "team-a", "clusters": ["cluster-a"] },
-        { "id": "checkout-b", "name": "Checkout B", "namespace": "team-b", "clusters": ["cluster-b"] },
-        { "id": "shared", "name": "Shared", "namespace": ["shared", "team-a"], "clusters": ["cluster-a", "cluster-b"] },
-        { "id": "missing", "name": "Unavailable", "namespace": "unavailable", "clusters": ["cluster-missing"] }
+        { "id": "checkout-a", "name": "Checkout A", "targets": [{ "namespace": "team-a", "clusters": ["cluster-a"] }] },
+        { "id": "checkout-b", "name": "Checkout B", "targets": [{ "namespace": "team-b", "clusters": ["cluster-b"] }] },
+        { "id": "shared", "name": "Shared", "targets": [
+          { "namespace": "shared", "clusters": ["cluster-a", "cluster-b"] },
+          { "namespace": "team-a", "clusters": ["cluster-a"] }
+        ] },
+        { "id": "missing", "name": "Unavailable", "targets": [{ "namespace": "unavailable", "clusters": ["cluster-missing"] }] }
       ]
     }
   ],
