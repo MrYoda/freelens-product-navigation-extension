@@ -19,6 +19,22 @@ test("normalizes omitted nested collections", () => {
   assert.deepEqual(normalizeConfig(), { clusters: [], products: [], services: [], hidden: { services: {} } });
 });
 
+test("accepts multiple namespaces and counts every namespace/cluster target", () => {
+  const multiple = structuredClone(valid);
+  (multiple.services[0].components[0] as { namespace: string | string[] }).namespace = ["shop-dev", "shop-stage"];
+  const result = parseConfig(JSON.stringify(multiple));
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.value?.services[0].components[0].namespace, ["shop-dev", "shop-stage"]);
+});
+
+test("rejects empty and duplicate namespaces", () => {
+  const multiple = structuredClone(valid);
+  (multiple.services[0].components[0] as { namespace: string | string[] }).namespace = ["shop", "shop", ""];
+  const errors = parseConfig(JSON.stringify(multiple)).errors.join("\n");
+  assert.match(errors, /Duplicate id "shop"/);
+  assert.match(errors, /namespace\[2\] must be a non-empty string/);
+});
+
 test("validates duplicate ids and cross references", () => {
   const invalid = structuredClone(valid);
   invalid.clusters.push({ id: "cluster-a", name: "Duplicate" });

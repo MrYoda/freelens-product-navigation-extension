@@ -1,12 +1,17 @@
 .ProductNavigationPage { background: var(--mainBackground, #fff); box-sizing: border-box; height: 100%; overflow: auto; padding: 24px; position: relative; z-index: 2; }
-.ProductNavigationTopBarButton { appearance: none; background: transparent; border: 0; color: inherit; cursor: pointer; padding: 0; }
+.ProductNavigationTopBarButton { appearance: none; background: transparent; border: 0; color: inherit; cursor: pointer; margin-left: 8px; padding: 0; }
 .ProductNavigationPage header { align-items: flex-start; display: flex; justify-content: space-between; }
 .ProductNavigationPage h1 { margin: 0; }
 .ProductNavigationFilter { box-sizing: border-box; margin: 16px 0 24px; padding: 8px; width: 100%; }
 .ProductNavigationPage table { border-collapse: collapse; width: 100%; }
 .ProductNavigationPage th, .ProductNavigationPage td { border-bottom: 1px solid var(--border-color); padding: 10px; text-align: left; vertical-align: top; }
 .ProductNavigationTargets, .ProductNavigationActions { display: flex; flex-wrap: wrap; gap: 8px; }
-.ProductNavigationNamespace { font-family: monospace; margin-bottom: 8px; }
+.ProductNavigationNamespaceTarget + .ProductNavigationNamespaceTarget { margin-top: 12px; }
+.ProductNavigationNamespace { font-family: monospace; margin-bottom: 6px; }
+.ProductNavigationTarget { background: var(--colorOk, #00a98f); border: 1px solid transparent; border-radius: 4px; color: #fff; cursor: pointer; font-weight: 600; padding: 6px 10px; transition: filter .15s ease, transform .15s ease; }
+.ProductNavigationTarget:hover { filter: brightness(1.12); }
+.ProductNavigationTarget:active { transform: translateY(1px); }
+.ProductNavigationTarget:focus-visible { outline: 2px solid var(--primary, #00a98f); outline-offset: 2px; }
 .ProductNavigationPage tr.is-hidden { opacity: .55; text-decoration: line-through; }
 .ProductNavigationErrors { color: var(--colorError); }
 .ProductNavigationPreferences { min-width: 620px; }

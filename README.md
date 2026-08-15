@@ -9,14 +9,18 @@ the original Freelens fork into an independently installable extension.
   application top bar or the **Products** action on Welcome;
 - the same page inside every cluster under **Products** in the sidebar;
 - product/service/component filtering and persistent hidden components;
+- filter, hidden-toggle, and scroll state preserved while visiting targets;
+- multiple namespaces per component, without duplicating table rows;
 - one-click cross-cluster navigation which activates the selected catalog
   cluster, selects the component namespace, and opens **Workloads → Pods**;
 - a validated JSON editor in **Preferences → Extensions → Product navigation**.
 
-The global page and cross-frame hand-off use only public Freelens extension
-points: `globalPages`, `topBarItems`, Catalog entities, extension IPC,
-`namespaceStore`, and renderer navigation. No Freelens fork or private source
-import is required.
+The global page and cross-frame hand-off use Freelens extension points:
+`globalPages`, `topBarItems`, Catalog entities, extension IPC, `namespaceStore`,
+and renderer navigation. A small DOM placement shim moves the legacy
+`topBarItems` registration beside Home because that API currently registers
+all extension items on the right and exposes no side/order option. No Freelens
+fork or private source import is required.
 
 ## Configuration format
 
@@ -43,7 +47,7 @@ the catalog entity ID or its name.
         {
           "id": "checkout-api",
           "name": "API",
-          "namespace": "checkout",
+          "namespace": ["checkout-dev", "checkout-stage"],
           "clusters": ["development", "production"]
         }
       ]
@@ -59,7 +63,9 @@ the catalog entity ID or its name.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
-component is validated before **Apply** is enabled.
+component is validated before **Apply** is enabled. `namespace` accepts either
+a single string (the original format) or an array. Every namespace is shown in
+the same component row and can be opened on every configured cluster.
 
 ## Build and install
 
@@ -71,11 +77,26 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `freelens-product-navigation-extension-0.2.1.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.0.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
 npm semver; keep `engines.freelens` in the `^major.minor.patch` form.
+
+After the first npm publication, users can instead enter the lowercase package
+name directly in Freelens:
+
+```text
+@mryoda/freelens-product-navigation-extension
+```
+
+Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
+name even though GitHub account names are case-insensitive. To publish, create
+the `mryoda` npm organization/scope and configure npm trusted publishing for
+this GitHub repository, workflow `publish.yml`, and environment `npm`. Then set
+`package.json.version` to an unpublished version and publish a GitHub Release;
+the workflow builds, validates, and publishes the public package with npm
+provenance. A maintainer can also run it manually from **Actions**.
 
 ## Real Freelens GUI smoke test
 

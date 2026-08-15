@@ -16,7 +16,7 @@ export interface ProductNavigationService {
 export interface ProductNavigationComponent {
   id: string;
   name: string;
-  namespace: string;
+  namespace: string | string[];
   clusters: string[];
 }
 export interface ProductNavigationHidden {
@@ -84,7 +84,14 @@ export function parseConfig(json: string): ValidationResult {
       if (!isNonEmptyString(component.id)) errors.push(`${componentPath}.id must be a non-empty string`);
       else validateUniqueId(componentIds, component.id, componentPath, errors);
       if (!isNonEmptyString(component.name)) errors.push(`${componentPath}.name must be a non-empty string`);
-      if (!isNonEmptyString(component.namespace)) errors.push(`${componentPath}.namespace must be a non-empty string`);
+      const namespaces = Array.isArray(component.namespace) ? component.namespace : [component.namespace];
+      if (namespaces.length === 0) errors.push(`${componentPath}.namespace must contain at least one namespace`);
+      const namespaceNames = new Set<string>();
+      namespaces.forEach((namespace, namespaceIndex) => {
+        const namespacePath = Array.isArray(component.namespace) ? `${componentPath}.namespace[${namespaceIndex}]` : `${componentPath}.namespace`;
+        if (!isNonEmptyString(namespace)) errors.push(`${namespacePath} must be a non-empty string`);
+        else validateUniqueId(namespaceNames, namespace, namespacePath, errors);
+      });
       if (!Array.isArray(component.clusters)) { errors.push(`${componentPath}.clusters must be an array`); return; }
       const clusterIds = new Set<string>();
       component.clusters.forEach((clusterId, clusterIndex) => {
@@ -113,6 +120,6 @@ export function parseConfig(json: string): ValidationResult {
 
 export const getSummary = (value: ProductNavigationPreferences) => {
   const componentCount = value.services.reduce((sum, service) => sum + service.components.length, 0);
-  const targetCount = value.services.reduce((sum, service) => sum + service.components.reduce((total, component) => total + component.clusters.length, 0), 0);
+  const targetCount = value.services.reduce((sum, service) => sum + service.components.reduce((total, component) => total + component.clusters.length * (Array.isArray(component.namespace) ? component.namespace.length : 1), 0), 0);
   return `${value.clusters.length} clusters, ${value.products.length} products, ${value.services.length} services, ${componentCount} components, ${targetCount} targets`;
 };

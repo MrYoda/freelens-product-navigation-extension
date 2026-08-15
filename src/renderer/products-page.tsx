@@ -5,12 +5,18 @@ import { navigateToProductTarget } from "./navigation";
 
 export const ProductsIcon = () => <Renderer.Component.Icon material="account_tree" />;
 
+const pageState = { filter: "", showHidden: false, scrollTop: 0 };
+const namespacesOf = (namespace: string | string[]) => Array.isArray(namespace) ? namespace : [namespace];
+
 export const ProductsPage = () => {
   const store = getProductNavigationStore();
   const navigation = store.navigation;
-  const [filter, setFilter] = React.useState("");
-  const [showHidden, setShowHidden] = React.useState(false);
-  const [error, setError] = React.useState("");
+  const page = React.useRef<HTMLDivElement>(null);
+  const [filter, setFilterState] = React.useState(pageState.filter);
+  const [showHidden, setShowHiddenState] = React.useState(pageState.showHidden);
+  const setFilter = (value: string) => { pageState.filter = value; setFilterState(value); };
+  const setShowHidden = (value: boolean) => { pageState.showHidden = value; setShowHiddenState(value); };
+  React.useLayoutEffect(() => { if (page.current) page.current.scrollTop = pageState.scrollTop; }, []);
   const query = filter.trim().toLocaleLowerCase();
   const clustersById = new Map(navigation.clusters.map(cluster => [cluster.id, cluster]));
   const productsById = new Map(navigation.products.map(product => [product.id, product]));
@@ -28,7 +34,7 @@ export const ProductsPage = () => {
       if (isHidden(service.id, component.id) && !showHidden) return false;
       if (!query) return true;
       const clusterTerms = component.clusters.flatMap(id => [id, clustersById.get(id)?.name]);
-      return [service.id, service.name, product?.id, product?.name, component.id, component.name, component.namespace, ...clusterTerms]
+      return [service.id, service.name, product?.id, product?.name, component.id, component.name, ...namespacesOf(component.namespace), ...clusterTerms]
         .some(term => term?.toLocaleLowerCase().includes(query));
     });
     return { service, components };
@@ -37,23 +43,24 @@ export const ProductsPage = () => {
 
   if (!store.loaded) return <div className="ProductNavigationPage" data-testid="product-navigation-page"><p>Loading product navigation settings…</p></div>;
 
-  return <div className="ProductNavigationPage" data-testid="product-navigation-page">
+  return <div className="ProductNavigationPage" data-testid="product-navigation-page" ref={page} onScroll={event => { pageState.scrollTop = event.currentTarget.scrollTop; }}>
     <header><div><h1>Products</h1><p>Select a cluster to open the component namespace.</p></div>
       <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.currentTarget.checked)} /> Show hidden</label>
     </header>
     <input className="ProductNavigationFilter" value={filter} onChange={event => setFilter(event.currentTarget.value)} placeholder="Filter services, components, namespaces, products, or clusters" />
-    {error && <p className="ProductNavigationErrors">{error}</p>}
     {count === 0 ? <p>{navigation.services.length === 0 ? "No services configured. Add product navigation JSON in Preferences." : "No components match the current filters."}</p> :
       <table><thead><tr><th>Service</th><th>Component</th><th>Namespace and clusters</th><th>Hidden</th></tr></thead><tbody>
         {visibleServices.flatMap(({ service, components }) => components.map((component, index) => {
           const hidden = isHidden(service.id, component.id);
           return <tr className={hidden ? "is-hidden" : undefined} key={`${service.id}:${component.id}`}>
             {index === 0 && <td rowSpan={components.length}>{service.name}</td>}<td>{component.name}</td><td>
-              <div className="ProductNavigationNamespace">{component.namespace}</div><div className="ProductNavigationTargets">
-                {component.clusters.map(clusterId => <button key={clusterId} onClick={() => {
-                  setError(""); navigateToProductTarget(component, clusterId).catch(reason => setError(reason instanceof Error ? reason.message : String(reason)));
-                }}>{clustersById.get(clusterId)?.name ?? clusterId}</button>)}
-              </div></td><td><label><input type="checkbox" checked={hidden} onChange={event => setHidden(service.id, component.id, event.currentTarget.checked)} /> Hide</label></td>
+              {namespacesOf(component.namespace).map(namespace => <div className="ProductNavigationNamespaceTarget" key={namespace}>
+                <div className="ProductNavigationNamespace">{namespace}</div><div className="ProductNavigationTargets">
+                  {component.clusters.map(clusterId => <button aria-label={`Open ${component.name} in ${namespace} on ${clustersById.get(clusterId)?.name ?? clusterId}`} className="ProductNavigationTarget" key={clusterId} onClick={() => {
+                    navigateToProductTarget(namespace, clusterId).catch(reason => Renderer.Component.Notifications.error(reason instanceof Error ? reason.message : String(reason)));
+                  }}>{clustersById.get(clusterId)?.name ?? clusterId}</button>)}
+                </div>
+              </div>)}</td><td><label><input type="checkbox" checked={hidden} onChange={event => setHidden(service.id, component.id, event.currentTarget.checked)} /> Hide</label></td>
           </tr>;
         }))}
       </tbody></table>}

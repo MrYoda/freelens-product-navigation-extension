@@ -80,6 +80,7 @@ const openTarget = async (buttonText, namespace, podName) => {
 };
 
 await openProducts();
+assert(await evaluate(`document.querySelector('[data-testid="home-button"]').parentElement.nextElementSibling.querySelector('[data-testid="product-navigation-top-bar-button"]') !== null`, rootContext), "Products follows Home in the top bar");
 await evaluate(`(() => {
   const input = document.querySelector(".ProductNavigationFilter");
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "Checkout B");
@@ -89,6 +90,16 @@ await waitFor("filtered Products table", async () => {
   const text = await evaluate("document.querySelector('[data-testid=product-navigation-page]').innerText", rootContext);
   return text.includes("Checkout B") && !text.includes("Checkout A");
 });
+await evaluate(`document.querySelector('[aria-label="Open Checkout B in team-b on Cluster B"]').click()`, rootContext);
+await waitFor("Checkout B target", async () => {
+  for (const context of contexts.values()) {
+    if (!context.auxData?.isDefault || context.id === rootContext) continue;
+    const state = await evaluate("({ href: location.href, text: document.body.innerText })", context.id);
+    if (state.href.endsWith("/pods") && state.text.includes("Namespace: team-b")) return state;
+  }
+});
+await openProducts();
+assert.equal(await evaluate("document.querySelector('.ProductNavigationFilter').value", rootContext), "Checkout B", "filter survives target navigation");
 await evaluate(`(() => {
   const input = document.querySelector(".ProductNavigationFilter");
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "");
@@ -101,6 +112,9 @@ await waitFor("shown hidden component", () => evaluate("document.querySelector('
 await evaluate(`([...document.querySelectorAll("tr")].find(row => row.textContent.includes("Checkout A"))).querySelector('input[type="checkbox"]').click()`, rootContext);
 const clusterA = await openTarget("Cluster A", "team-a", "cluster-a-pod");
 await openProducts();
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationNamespaceTarget').length >= 2", rootContext), true, "multiple namespaces are visible in one component row");
+await evaluate(`document.querySelector('[aria-label="Open Unavailable in unavailable on Missing Cluster"]').click()`, rootContext);
+await waitFor("missing-cluster notification", () => evaluate(`document.querySelector(".Notifications")?.innerText.includes('Cannot find Kubernetes cluster "cluster-missing"')`, rootContext));
 const clusterB = await openTarget("Cluster B", "team-b", "cluster-b-pod");
 await evaluate(`([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim() === "Products"))?.click()`, clusterB.contextId);
 await waitFor("cluster Products page", async () => {
