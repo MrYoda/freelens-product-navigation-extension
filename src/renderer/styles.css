@@ -1,0 +1,15 @@
+.ProductNavigationPage { background: var(--mainBackground, #fff); box-sizing: border-box; height: 100%; overflow: auto; padding: 24px; position: relative; z-index: 2; }
+.ProductNavigationTopBarButton { appearance: none; background: transparent; border: 0; color: inherit; cursor: pointer; padding: 0; }
+.ProductNavigationPage header { align-items: flex-start; display: flex; justify-content: space-between; }
+.ProductNavigationPage h1 { margin: 0; }
+.ProductNavigationFilter { box-sizing: border-box; margin: 16px 0 24px; padding: 8px; width: 100%; }
+.ProductNavigationPage table { border-collapse: collapse; width: 100%; }
+.ProductNavigationPage th, .ProductNavigationPage td { border-bottom: 1px solid var(--border-color); padding: 10px; text-align: left; vertical-align: top; }
+.ProductNavigationTargets, .ProductNavigationActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ProductNavigationNamespace { font-family: monospace; margin-bottom: 8px; }
+.ProductNavigationPage tr.is-hidden { opacity: .55; text-decoration: line-through; }
+.ProductNavigationErrors { color: var(--colorError); }
+.ProductNavigationPreferences { min-width: 620px; }
+.ProductNavigationPreferences textarea { box-sizing: border-box; font-family: monospace; min-height: 360px; width: 100%; }
+.ProductNavigationActions { margin-top: 8px; }
+.ProductNavigationPreview { margin-top: 16px; }
