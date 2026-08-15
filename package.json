@@ -1,7 +1,12 @@
 {
   "name": "freelens-product-navigation-extension",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Product-oriented navigation for Freelens",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrYoda/freelens-product-navigation-extension.git",
+    "directory": "."
+  },
   "type": "module",
   "main": "dist/main/index.cjs",
   "renderer": "dist/renderer/index.cjs",
@@ -32,6 +37,10 @@
     "react": "17.0.2",
     "typescript": "^5.7.0",
     "vite": "^6.0.0"
+  },
+  "author": {
+    "name": "Anton Kuzmichev",
+    "email": "assargin@gmail.com"
   },
   "license": "MIT",
   "lens": {
