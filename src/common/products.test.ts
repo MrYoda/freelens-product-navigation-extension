@@ -41,15 +41,10 @@ test("rejects empty targets, duplicate namespaces, and empty cluster lists", () 
   assert.match(errors, /clusters must contain at least one cluster/);
 });
 
-test("migrates legacy namespace and clusters to explicit targets", () => {
-  const legacy = structuredClone(valid) as unknown as { services: Array<{ components: Array<Record<string, unknown>> }> };
-  legacy.services[0].components[0] = { id: "component-a", name: "API", namespace: ["shop-dev", "shop-stage"], clusters: ["cluster-a"] };
-  const result = parseConfig(JSON.stringify(legacy));
-  assert.deepEqual(result.errors, []);
-  assert.deepEqual(result.value?.services[0].components[0].targets, [
-    { namespace: "shop-dev", clusters: ["cluster-a"] },
-    { namespace: "shop-stage", clusters: ["cluster-a"] },
-  ]);
+test("requires targets on every component", () => {
+  const missingTargets = structuredClone(valid) as unknown as { services: Array<{ components: Array<Record<string, unknown>> }> };
+  missingTargets.services[0].components[0] = { id: "component-a", name: "API" };
+  assert.match(parseConfig(JSON.stringify(missingTargets)).errors.join("\n"), /targets must be an array/);
 });
 
 test("validates duplicate ids and cross references", () => {

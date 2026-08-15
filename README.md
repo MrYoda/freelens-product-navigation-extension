@@ -24,11 +24,9 @@ fork or private source import is required.
 
 ## Configuration format
 
-The format evolves the original fork preference by replacing its ambiguous
-component-level `namespace` and `clusters` fields with explicit `targets`.
-Cluster IDs in each target refer to entries in the top-level `clusters` array.
-A configured cluster ID is resolved against either the catalog entity ID or
-its name.
+Every component uses an explicit `targets` array. Cluster IDs in each target
+refer to entries in the top-level `clusters` array. A configured cluster ID is
+resolved against either the catalog entity ID or its name.
 
 ```json
 {
@@ -71,11 +69,6 @@ component is validated before **Apply** is enabled. Each component has a
 where that namespace exists. Targets are shown in the same component row, so
 different environments do not create duplicate component rows or accidental
 namespace × cluster combinations.
-
-Existing saved configurations are migrated on load: a legacy string becomes
-one target, while the briefly supported namespace array becomes one target per
-namespace with its former cluster list. Saving the settings writes only the new
-explicit `targets` shape.
 
 ## Build and install
 

@@ -33,25 +33,10 @@ export const defaultConfig: ProductNavigationPreferences = {
   hidden: { services: {} },
 };
 
-const normalizeComponent = (component: {
-  id: string;
-  name: string;
-  namespace?: string | string[];
-  clusters?: string[];
-  targets?: ProductNavigationTarget[];
-}): ProductNavigationComponent => {
-  if (Array.isArray(component.targets)) return { ...component, targets: component.targets };
-  const namespaces = Array.isArray(component.namespace) ? component.namespace : [component.namespace];
-  const targets = namespaces.filter((namespace): namespace is string => typeof namespace === "string")
-    .map(namespace => ({ namespace, clusters: component.clusters ?? [] }));
-  const { namespace: _namespace, clusters: _clusters, ...rest } = component;
-  return { ...rest, targets };
-};
-
 export const normalizeConfig = (value?: Partial<ProductNavigationPreferences>): ProductNavigationPreferences => ({
   clusters: value?.clusters ?? [],
   products: value?.products ?? [],
-  services: value?.services?.map(service => ({ ...service, components: service.components?.map(normalizeComponent) ?? [] })) ?? [],
+  services: value?.services?.map(service => ({ ...service, components: service.components ?? [] })) ?? [],
   hidden: { services: value?.hidden?.services ?? {} },
 });
 
@@ -99,11 +84,6 @@ export function parseConfig(json: string): ValidationResult {
     service.components.forEach((component, componentIndex) => {
       const componentPath = `${path}.components[${componentIndex}]`;
       if (!isObject(component)) { errors.push(`${componentPath} must be an object`); return; }
-      if (!Array.isArray(component.targets) && (typeof component.namespace === "string" || Array.isArray(component.namespace)) && Array.isArray(component.clusters)) {
-        Object.assign(component, normalizeComponent(component as unknown as Parameters<typeof normalizeComponent>[0]));
-        delete component.namespace;
-        delete component.clusters;
-      }
       if (!isNonEmptyString(component.id)) errors.push(`${componentPath}.id must be a non-empty string`);
       else validateUniqueId(componentIds, component.id, componentPath, errors);
       if (!isNonEmptyString(component.name)) errors.push(`${componentPath}.name must be a non-empty string`);
