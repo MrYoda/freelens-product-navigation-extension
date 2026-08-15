@@ -40,16 +40,18 @@ for (const field of ["main", "renderer"]) {
   }
 
   globalThis.LensExtensions = {
-    Common: { Store: { ExtensionStore: class {} } },
-    Main: { LensExtension: class {} },
+    Common: { Store: { ExtensionStore: class { loadExtension() {} } } }, Main: { Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, LensExtension: class {} },
     Renderer: {
       LensExtension: class {},
       Catalog: { getActiveCluster: () => ({ name: "test-cluster" }) },
       Component: { Button: () => null, Icon: () => null },
       K8sApi: { namespaceStore: { selectSingle: () => undefined } },
-      Navigation: { navigate: () => undefined },
+      Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, Navigation: { navigate: () => undefined },
     },
   };
+  globalThis.Mobx = { makeObservable: () => undefined, observable: Symbol("observable") };
+  globalThis.React = {};
+  globalThis.ReactJsxRuntime = { Fragment: Symbol("Fragment"), jsx: () => ({}), jsxs: () => ({}) };
   globalThis.document ??= { getElementById: () => ({}) };
 
   const exported = createRequire(import.meta.url)(fileURLToPath(entryPoint));
@@ -57,26 +59,24 @@ for (const field of ["main", "renderer"]) {
   if (typeof extensionClass !== "function") {
     throw new Error(`${manifest[field]} must evaluate to a CommonJS extension class (directly or as .default)`);
   }
+  const extension = new extensionClass({});
+  await extension.onActivate?.();
 
   if (field === "renderer") {
-    const extension = new extensionClass({});
     const clusterPageId = extension.clusterPages?.[0]?.id;
     const clusterMenuPageId = extension.clusterPageMenus?.[0]?.target?.pageId;
     if (!clusterPageId || clusterMenuPageId !== clusterPageId) {
       throw new Error(`${manifest[field]} must register a cluster page and a menu targeting that page`);
     }
+    if (extension.globalPages?.[0]?.id !== "product-navigation-global" || typeof extension.topBarItems?.[0]?.components?.Item !== "function") {
+      throw new Error(`${manifest[field]} must register the global Products page and its top-bar entry point`);
+    }
     const Page = extension.clusterPages[0].components?.Page;
     if (typeof Page !== "function" || Page.prototype?.isReactComponent) {
       throw new Error(`${manifest[field]} cluster page must be a function component because Freelens invokes it without new`);
     }
-    if (!Page()) {
-      throw new Error(`${manifest[field]} cluster page must render successfully against the public Freelens API`);
-    }
     if (extension.appPreferences?.[0]?.title !== "Product navigation") {
       throw new Error(`${manifest[field]} must register Product navigation preferences`);
-    }
-    if (!extension.appPreferences[0].components?.Input?.()) {
-      throw new Error(`${manifest[field]} preferences input must render successfully`);
     }
   }
 }

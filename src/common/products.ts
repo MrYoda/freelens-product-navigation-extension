@@ -1,61 +1,118 @@
-export interface ComponentTarget {
-  cluster: string;
+export interface ProductNavigationPreferences {
+  clusters: ProductNavigationCluster[];
+  products: ProductNavigationProduct[];
+  services: ProductNavigationService[];
+  hidden: ProductNavigationHidden;
+}
+
+export interface ProductNavigationCluster { id: string; name: string }
+export interface ProductNavigationProduct { id: string; name: string }
+export interface ProductNavigationService {
+  id: string;
+  name: string;
+  productId?: string;
+  components: ProductNavigationComponent[];
+}
+export interface ProductNavigationComponent {
+  id: string;
+  name: string;
   namespace: string;
+  clusters: string[];
+}
+export interface ProductNavigationHidden {
+  services: Record<string, { components: string[] }>;
 }
 
-export interface ProductComponent {
-  name: string;
-  description?: string;
-  hidden?: boolean;
-  targets: ComponentTarget[];
-}
+export const defaultConfig: ProductNavigationPreferences = {
+  clusters: [],
+  products: [],
+  services: [],
+  hidden: { services: {} },
+};
 
-export interface Product {
-  name: string;
-  description?: string;
-  components: ProductComponent[];
-}
+export const normalizeConfig = (value?: Partial<ProductNavigationPreferences>): ProductNavigationPreferences => ({
+  clusters: value?.clusters ?? [],
+  products: value?.products ?? [],
+  services: value?.services?.map(service => ({ ...service, components: service.components ?? [] })) ?? [],
+  hidden: { services: value?.hidden?.services ?? {} },
+});
 
-export interface ProductNavigationConfig {
-  products: Product[];
-}
+export interface ValidationResult { errors: string[]; value?: ProductNavigationPreferences }
+const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
+const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.trim().length > 0;
+const validateUniqueId = (ids: Set<string>, id: string, path: string, errors: string[]) => {
+  if (ids.has(id)) errors.push(`Duplicate id "${id}" at ${path}`);
+  ids.add(id);
+};
 
-export const defaultConfig: ProductNavigationConfig = { products: [] };
-
-function nonEmpty(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || value.trim() === "") throw new Error(`${path} must be a non-empty string`);
-}
-
-export function parseConfig(input: string): ProductNavigationConfig {
-  const value: unknown = JSON.parse(input);
-  if (!value || typeof value !== "object" || !Array.isArray((value as ProductNavigationConfig).products)) {
-    throw new Error("products must be an array");
+export function parseConfig(json: string): ValidationResult {
+  let parsed: unknown;
+  try { parsed = JSON.parse(json); } catch (error) {
+    return { errors: [error instanceof Error ? error.message : "Invalid JSON"] };
   }
-  const config = value as ProductNavigationConfig;
-  config.products.forEach((product, pi) => {
-    nonEmpty(product.name, `products[${pi}].name`);
-    if (!Array.isArray(product.components)) throw new Error(`products[${pi}].components must be an array`);
-    product.components.forEach((component, ci) => {
-      nonEmpty(component.name, `products[${pi}].components[${ci}].name`);
-      if (!Array.isArray(component.targets) || component.targets.length === 0) {
-        throw new Error(`products[${pi}].components[${ci}].targets must be a non-empty array`);
-      }
-      component.targets.forEach((target, ti) => {
-        const path = `products[${pi}].components[${ci}].targets[${ti}]`;
-        nonEmpty(target.cluster, `${path}.cluster`);
-        nonEmpty(target.namespace, `${path}.namespace`);
+  if (!isObject(parsed)) return { errors: ["Root value must be an object"] };
+
+  const errors: string[] = [];
+  const collections = new Map<string, Set<string>>();
+  for (const field of ["clusters", "products", "services"] as const) {
+    const values = parsed[field];
+    const ids = new Set<string>();
+    collections.set(field, ids);
+    if (!Array.isArray(values)) { errors.push(`Root field "${field}" must be an array`); continue; }
+    values.forEach((value, index) => {
+      const path = `${field}[${index}]`;
+      if (!isObject(value)) { errors.push(`${path} must be an object`); return; }
+      if (!isNonEmptyString(value.id)) errors.push(`${path}.id must be a non-empty string`);
+      else validateUniqueId(ids, value.id, path, errors);
+      if (!isNonEmptyString(value.name)) errors.push(`${path}.name must be a non-empty string`);
+    });
+  }
+
+  const componentsByService = new Map<string, Set<string>>();
+  if (Array.isArray(parsed.services)) parsed.services.forEach((service, serviceIndex) => {
+    if (!isObject(service)) return;
+    const path = `services[${serviceIndex}]`;
+    if (service.productId !== undefined && (!isNonEmptyString(service.productId) || !collections.get("products")?.has(service.productId))) {
+      errors.push(`${path}.productId must reference an existing product`);
+    }
+    if (!Array.isArray(service.components)) { errors.push(`${path}.components must be an array`); return; }
+    const componentIds = new Set<string>();
+    if (isNonEmptyString(service.id)) componentsByService.set(service.id, componentIds);
+    service.components.forEach((component, componentIndex) => {
+      const componentPath = `${path}.components[${componentIndex}]`;
+      if (!isObject(component)) { errors.push(`${componentPath} must be an object`); return; }
+      if (!isNonEmptyString(component.id)) errors.push(`${componentPath}.id must be a non-empty string`);
+      else validateUniqueId(componentIds, component.id, componentPath, errors);
+      if (!isNonEmptyString(component.name)) errors.push(`${componentPath}.name must be a non-empty string`);
+      if (!isNonEmptyString(component.namespace)) errors.push(`${componentPath}.namespace must be a non-empty string`);
+      if (!Array.isArray(component.clusters)) { errors.push(`${componentPath}.clusters must be an array`); return; }
+      const clusterIds = new Set<string>();
+      component.clusters.forEach((clusterId, clusterIndex) => {
+        const clusterPath = `${componentPath}.clusters[${clusterIndex}]`;
+        if (!isNonEmptyString(clusterId) || !collections.get("clusters")?.has(clusterId)) errors.push(`${clusterPath} must reference an existing cluster`);
+        else validateUniqueId(clusterIds, clusterId, clusterPath, errors);
       });
     });
   });
-  return config;
+
+  if (!isObject(parsed.hidden) || !isObject(parsed.hidden.services)) errors.push('Root field "hidden.services" must be an object');
+  else Object.entries(parsed.hidden.services).forEach(([serviceId, hiddenService]) => {
+    if (!collections.get("services")?.has(serviceId)) errors.push(`hidden.services.${serviceId} must reference an existing service`);
+    if (!isObject(hiddenService) || !Array.isArray(hiddenService.components)) {
+      errors.push(`hidden.services.${serviceId}.components must be an array`); return;
+    }
+    hiddenService.components.forEach((componentId, index) => {
+      if (!isNonEmptyString(componentId) || !componentsByService.get(serviceId)?.has(componentId)) {
+        errors.push(`hidden.services.${serviceId}.components[${index}] must reference a component`);
+      }
+    });
+  });
+
+  return errors.length ? { errors } : { errors: [], value: normalizeConfig(parsed as Partial<ProductNavigationPreferences>) };
 }
 
-export function productsForCluster(config: ProductNavigationConfig, cluster?: string, showHidden = false): Product[] {
-  return config.products
-    .map(product => ({
-      ...product,
-      components: product.components.filter(component =>
-        (showHidden || !component.hidden) && (!cluster || component.targets.some(target => target.cluster === cluster))),
-    }))
-    .filter(product => product.components.length > 0);
-}
+export const getSummary = (value: ProductNavigationPreferences) => {
+  const componentCount = value.services.reduce((sum, service) => sum + service.components.length, 0);
+  const targetCount = value.services.reduce((sum, service) => sum + service.components.reduce((total, component) => total + component.clusters.length, 0), 0);
+  return `${value.clusters.length} clusters, ${value.products.length} products, ${value.services.length} services, ${componentCount} components, ${targetCount} targets`;
+};

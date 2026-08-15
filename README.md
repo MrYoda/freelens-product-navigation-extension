@@ -1,47 +1,65 @@
 # Freelens Product Navigation Extension
 
-Product-oriented navigation for Freelens **1.10.0 and newer**. The extension is
-installed from a locally built `.tgz`; it is not intended for npm publication.
+Product-oriented navigation for Freelens **1.10.0 and newer**, extracted from
+the original Freelens fork into an independently installable extension.
 
-## Compatibility audit
+## Features
 
-The domain model, validation, preferences UI, product filtering, hidden
-components, namespace selection and Pods navigation can be implemented with the
-public extension API. Freelens 1.10.0 does not expose public extension points for
-an application-level top-bar button/global page or for activating and messaging
-another cluster frame. Consequently this extension uses the supported cluster
-page and cluster sidebar menu APIs. It displays targets belonging to the active
-cluster; selecting a namespace updates that cluster's namespace context and
-opens Pods.
+- a global **Products** page, opened with the `account_tree` button in the
+  application top bar;
+- the same page inside every cluster under **Products** in the sidebar;
+- product/service/component filtering and persistent hidden components;
+- one-click cross-cluster navigation which activates the selected catalog
+  cluster, selects the component namespace, and opens **Workloads → Pods**;
+- a validated JSON editor in **Preferences → Extensions → Product navigation**.
 
-This is deliberately an API-only extension: it does not import Freelens source
-internals, use Electron `sendToFrame`, or rely on cross-origin local storage. A
-future exact reproduction of the fork's cross-cluster UX requires upstream,
-general-purpose APIs for app pages/menu items and cluster activation/navigation.
+The global page and cross-frame hand-off use only public Freelens extension
+points: `globalPages`, `topBarItems`, Catalog entities, extension IPC,
+`namespaceStore`, and renderer navigation. No Freelens fork or private source
+import is required.
 
-## Configuration
+## Configuration format
 
-Open **Preferences → Extensions → Product navigation** and enter JSON:
+The format is intentionally identical to the `productNavigation` preference in
+the original fork. Cluster IDs in component `clusters` refer to entries in the
+top-level `clusters` array. A configured cluster ID is resolved against either
+the catalog entity ID or its name.
 
 ```json
 {
-  "products": [{
-    "name": "Storefront",
-    "description": "Customer-facing services",
-    "components": [{
-      "name": "API",
-      "description": "HTTP API",
-      "targets": [
-        { "cluster": "development", "namespace": "storefront-dev" },
-        { "cluster": "production", "namespace": "storefront" }
+  "clusters": [
+    { "id": "development", "name": "Development" },
+    { "id": "production", "name": "Production" }
+  ],
+  "products": [
+    { "id": "storefront", "name": "Storefront" }
+  ],
+  "services": [
+    {
+      "id": "checkout",
+      "name": "Checkout",
+      "productId": "storefront",
+      "components": [
+        {
+          "id": "checkout-api",
+          "name": "API",
+          "namespace": "checkout",
+          "clusters": ["development", "production"]
+        }
       ]
-    }]
-  }]
+    }
+  ],
+  "hidden": {
+    "services": {
+      "checkout": { "components": ["checkout-api"] }
+    }
+  }
 }
 ```
 
-`cluster` must exactly equal the catalog cluster name. Set `hidden: true` on a
-component to hide it unless **Show hidden** is enabled.
+`id` and `name` are required on clusters, products, services, and components.
+`productId` is optional. Every referenced product, cluster, service, and hidden
+component is validated before **Apply** is enabled.
 
 ## Build and install
 
@@ -49,56 +67,55 @@ component to hide it unless **Show hidden** is enabled.
 corepack enable
 pnpm install
 pnpm test
+pnpm typecheck
 pnpm pack:extension
 ```
 
-The build has two library entry points and intentionally has no renderer
-`index.html`: `dist/main/index.cjs` runs in the main process and
-`dist/renderer/index.cjs` is loaded by the Freelens renderer. The Freelens API
-remains external so the build does not bundle the application itself; React is
-bundled because it is not resolvable from an installed extension directory. Both
-entry points are emitted as CommonJS to match the extension loader. The archive
-has no package-manager runtime dependencies and can be installed offline.
+Install `freelens-product-navigation-extension-0.2.0.tgz` from the Freelens
+**Extensions** screen. The package contains self-contained CommonJS main and
+renderer entries and has no runtime npm dependencies, so installation does not
+need registry access. Freelens validates its engine field more narrowly than
+npm semver; keep `engines.freelens` in the `^major.minor.patch` form.
 
-In Freelens, open **Extensions**, select the generated
-`freelens-product-navigation-extension-0.1.12.tgz`, and install it. The extension
-registers **Products** in each cluster sidebar (showing targets for that active
-cluster). Its JSON
-editor is under **Preferences → Extensions → Product navigation**.
+## Real Freelens GUI smoke test
 
-If an earlier version timed out, remove that failed installation and use the
-`0.1.12` archive. The version bump prevents a package-manager cache entry for
-the failed archive from being reused.
+`scripts/gui/mock-kubernetes.mjs` implements enough of the Kubernetes HTTP API
+for two independent clusters, each with two namespaces and mock Pods:
 
-Freelens validates its engine field more narrowly than npm semver: use
-`"engines": { "freelens": "^1.10.0" }`. Although `>=1.10.0` is a valid npm
-range, Freelens rejects that manifest during discovery. Its installer then waits
-for the rejected extension to appear and eventually shows the misleading
-installation timeout.
+| context | endpoint | namespaces |
+| --- | --- | --- |
+| `cluster-a` | `127.0.0.1:16443` | `team-a`, `shared` |
+| `cluster-b` | `127.0.0.1:16444` | `team-b`, `shared` |
 
-React is bundled into the renderer output rather than left as a CommonJS
-external. Freelens does not make `react`, `react/jsx-runtime`, or
-`@freelensapp/extensions` resolvable from an extension directory. The extension
-API is therefore read from the `globalThis.LensExtensions` object installed by
-the Freelens loader; its npm package is used for TypeScript types only.
-The UI uses class components so the bundled React copy does not depend on the
-host renderer's Hooks dispatcher. CSS is bundled as text and injected by the
-renderer entry point; no separately loaded stylesheet is required.
+Start it with a disposable kubeconfig path:
 
-Both CommonJS entry points evaluate to a callable extension class. Depending on
-Rollup's output, the class may be returned directly by `require()` or exposed as
-`.default`; the generated entry points expose both forms for compatibility with
-different Freelens loader call sites, and the packaging check accepts either.
+```sh
+pnpm mock:kubernetes -- /tmp/product-navigation-kubeconfig
+```
+
+Put `scripts/gui/product-navigation.json` into the extension preference store,
+start Freelens 1.10.3 with Chromium remote debugging enabled, and run:
+
+```sh
+CDP_PORT=9222 pnpm smoke:gui
+```
+
+The smoke test drives the actual Freelens renderer through the Chrome DevTools
+Protocol. It opens the global page and verifies both complete flows:
+`Cluster A → team-a → cluster-a-pod` and
+`Cluster B → team-b → cluster-b-pod`.
 
 ## Architecture
 
-- `src/common/products.ts` contains the portable schema, validation and filter.
-- `src/common/store.ts` persists preferences through `ExtensionStore`.
-- `src/main/index.ts` loads the extension store in the main process.
-- `src/renderer` registers preferences and the cluster page/menu.
+- `src/common/products.ts` defines the fork-compatible schema and validation.
+- `src/common/store.ts` persists it through `ExtensionStore` in every process.
+- `src/main/index.ts` relays namespaced extension IPC messages between frames.
+- `src/renderer/index.tsx` registers global/cluster pages, menus, top bar, and
+  preferences.
+- `src/renderer/navigation.ts` performs catalog activation and the readiness
+  handshake needed when a cluster frame has not been created yet.
 
-## Development constraints
-
-The implementation targets the documented public surface of
-`@freelensapp/extensions`. The repository's tests intentionally exercise the
-domain layer without Electron, Freelens, or network access.
+The renderer deliberately distinguishes the application window from cluster
+frames before accessing Kubernetes stores: those stores are unavailable in the
+global renderer. Request and delivery IPC channels are also distinct so a main
+process relay cannot receive and rebroadcast its own message recursively.

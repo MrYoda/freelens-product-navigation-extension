@@ -1,37 +1,23 @@
+import { builtinModules } from "node:module";
 import { resolve } from "node:path";
 import { defineConfig } from "electron-vite";
+import { globalExternals } from "./build/global-externals.cjs";
+
+const runtimeExternals = ["electron", /^electron\//, ...builtinModules, ...builtinModules.map(name => `node:${name}`)];
+const output = { format: "cjs" as const, entryFileNames: "index.cjs", exports: "named" as const };
 
 export default defineConfig({
   main: {
-    build: {
-      outDir: "dist/main",
-      rollupOptions: {
-        preserveEntrySignatures: "strict",
-        input: resolve("src/main/index.ts"),
-        output: {
-          format: "cjs",
-          entryFileNames: "index.cjs",
-          exports: "auto",
-          footer: "if (typeof module.exports === 'function') module.exports.default = module.exports;",
-        },
-      },
-    },
+    build: { outDir: "dist/main", rollupOptions: { input: resolve("src/main/index.ts"), external: runtimeExternals, output } },
+    plugins: [globalExternals({ "@freelensapp/extensions": "global.LensExtensions", mobx: "global.Mobx" })],
   },
-  renderer: {
-    build: {
-      outDir: "dist/renderer",
-      rollupOptions: {
-        preserveEntrySignatures: "strict",
-        // electron-vite treats renderer builds as applications unless an
-        // explicit Rollup input is provided. Extensions have no index.html.
-        input: resolve("src/renderer/index.tsx"),
-        output: {
-          format: "cjs",
-          entryFileNames: "index.cjs",
-          exports: "auto",
-          footer: "if (typeof module.exports === 'function') module.exports.default = module.exports;",
-        },
-      },
-    },
+  preload: {
+    build: { outDir: "dist/renderer", rollupOptions: { input: resolve("src/renderer/index.tsx"), external: runtimeExternals, output } },
+    plugins: [globalExternals({
+      "@freelensapp/extensions": "global.LensExtensions",
+      mobx: "global.Mobx",
+      react: "global.React",
+      "react/jsx-runtime": "global.ReactJsxRuntime",
+    })],
   },
 });

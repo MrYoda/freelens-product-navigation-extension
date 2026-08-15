@@ -1,0 +1,22 @@
+{
+  "clusters": [
+    { "id": "cluster-a", "name": "Cluster A" },
+    { "id": "cluster-b", "name": "Cluster B" }
+  ],
+  "products": [
+    { "id": "commerce", "name": "Commerce" }
+  ],
+  "services": [
+    {
+      "id": "checkout",
+      "name": "Checkout",
+      "productId": "commerce",
+      "components": [
+        { "id": "checkout-a", "name": "Checkout A", "namespace": "team-a", "clusters": ["cluster-a"] },
+        { "id": "checkout-b", "name": "Checkout B", "namespace": "team-b", "clusters": ["cluster-b"] },
+        { "id": "shared", "name": "Shared", "namespace": "shared", "clusters": ["cluster-a", "cluster-b"] }
+      ]
+    }
+  ],
+  "hidden": { "services": {} }
+}

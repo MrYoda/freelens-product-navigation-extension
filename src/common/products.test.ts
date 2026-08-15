@@ -1,21 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseConfig, productsForCluster } from "./products.ts";
+import { normalizeConfig, parseConfig } from "./products.ts";
 
-const json = JSON.stringify({ products: [{ name: "Shop", components: [
-  { name: "API", targets: [{ cluster: "dev", namespace: "shop" }] },
-  { name: "Jobs", hidden: true, targets: [{ cluster: "dev", namespace: "jobs" }] },
-] }] });
+const valid = {
+  clusters: [{ id: "cluster-a", name: "Cluster A" }],
+  products: [{ id: "product-a", name: "Product A" }],
+  services: [{ id: "service-a", name: "Service A", productId: "product-a", components: [
+    { id: "component-a", name: "API", namespace: "shop", clusters: ["cluster-a"] },
+  ] }],
+  hidden: { services: { "service-a": { components: ["component-a"] } } },
+};
 
-test("parses and filters product configuration", () => {
-  const config = parseConfig(json);
-  assert.deepEqual(productsForCluster(config, "dev").map(p => p.components.map(c => c.name)), [["API"]]);
-  assert.equal(productsForCluster(config, "prod").length, 0);
-  assert.equal(productsForCluster(config, "dev", true)[0].components.length, 2);
-  assert.deepEqual(productsForCluster(config).map(p => p.components.map(c => c.name)), [["API"]]);
+test("accepts the original Freelens product navigation format unchanged", () => {
+  assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: valid });
 });
 
-test("reports a precise validation path", () => {
-  assert.throws(() => parseConfig('{"products":[{"name":"x","components":[{"name":"x","targets":[]}]}]}'),
-    /products\[0\]\.components\[0\]\.targets/);
+test("normalizes omitted nested collections", () => {
+  assert.deepEqual(normalizeConfig(), { clusters: [], products: [], services: [], hidden: { services: {} } });
+});
+
+test("validates duplicate ids and cross references", () => {
+  const invalid = structuredClone(valid);
+  invalid.clusters.push({ id: "cluster-a", name: "Duplicate" });
+  invalid.services[0].components[0].clusters = ["missing"];
+  invalid.hidden.services["service-a"].components = ["missing"];
+  const errors = parseConfig(JSON.stringify(invalid)).errors.join("\n");
+  assert.match(errors, /Duplicate id "cluster-a"/);
+  assert.match(errors, /must reference an existing cluster/);
+  assert.match(errors, /must reference a component/);
 });
