@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { componentMatchesText, componentMatchesTokens, getSearchTokens, suggestSearchTokens, type SearchToken } from "./search.ts";
-import type { ProductNavigationPreferences } from "./products.ts";
+import { defaultConfig, type ProductNavigationPreferences } from "./products.ts";
 
 const navigation: ProductNavigationPreferences = {
   clusters: [{ id: "cluster-a", name: "Production Europe" }, { id: "cluster-b", name: "Development US" }],
@@ -14,7 +14,7 @@ const navigation: ProductNavigationPreferences = {
     { id: "catalog", name: "Catalog", components: [
       { id: "catalog-api", name: "API", targets: [{ namespace: "shop", clusters: ["cluster-b"] }] },
     ] },
-  ], hidden: { services: {} },
+  ], hidden: { services: {} }, updates: defaultConfig.updates,
 };
 const checkoutApi = navigation.services[0].components[0];
 

@@ -28,5 +28,17 @@
 .ProductNavigationErrors { color: var(--colorError); }
 .ProductNavigationPreferences { min-width: 620px; }
 .ProductNavigationPreferences textarea { box-sizing: border-box; font-family: monospace; min-height: 360px; width: 100%; }
+.ProductNavigationConfigBlock { border: 1px solid var(--border-color); border-radius: 5px; margin-top: 16px; padding: 14px; }
+.ProductNavigationConfigBlock h3 { margin: 0 0 10px; }
+.ProductNavigationConfigBlock textarea { min-height: 150px; }
+.ProductNavigationUpdateInterval { background: rgba(127, 127, 127, .08); border-radius: 5px; padding: 12px 14px; }
+.ProductNavigationUpdateInterval select { margin-left: 8px; }
+.ProductNavigationUpdateInterval p { margin-bottom: 0; opacity: .75; }
+.ProductNavigationUpdateSettings { align-items: flex-end; display: flex; gap: 12px; margin-top: 14px; }
+.ProductNavigationUpdateSource { flex: 1; }
+.ProductNavigationUpdateSource input { box-sizing: border-box; display: block; margin-top: 4px; width: 100%; }
+.ProductNavigationUpdateStatus { font-size: 12px; margin-bottom: 0; overflow-wrap: anywhere; }
+.ProductNavigationUpdateStatus.is-success { color: var(--colorOk, #3a9d5d); }
+.ProductNavigationUpdateStatus.is-error { color: var(--colorError, #d13b3b); }
 .ProductNavigationActions { margin-top: 8px; }
 .ProductNavigationPreview { margin-top: 16px; }
