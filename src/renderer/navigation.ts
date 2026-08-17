@@ -1,6 +1,4 @@
 import { Renderer } from "@freelensapp/extensions";
-import type { ProductNavigationComponent } from "../common/products";
-
 interface NavigationTarget { clusterId: string; namespace: string }
 const pendingTargets = new Map<string, NavigationTarget>();
 let ipc: Renderer.Ipc | undefined;
@@ -38,10 +36,10 @@ export const activateNavigation = (extension: Renderer.LensExtension) => {
   if (frameClusterId) setTimeout(() => ipc?.broadcast("ready:request", frameClusterId), 0);
 };
 
-export const navigateToProductTarget = async (component: ProductNavigationComponent, configuredClusterId: string) => {
+export const navigateToProductTarget = async (namespace: string, configuredClusterId: string) => {
   const entity = resolveCluster(configuredClusterId);
   if (!entity?.onRun) throw new Error(`Cannot find Kubernetes cluster "${configuredClusterId}"`);
-  const target = { clusterId: entity.getId(), namespace: component.namespace };
+  const target = { clusterId: entity.getId(), namespace };
   pendingTargets.set(target.clusterId, target);
   ipc?.broadcast("target:request", target);
   await entity.onRun({ navigate: Renderer.Navigation.navigate, setCommandPaletteContext: () => undefined });

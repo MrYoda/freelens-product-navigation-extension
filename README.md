@@ -9,21 +9,24 @@ the original Freelens fork into an independently installable extension.
   application top bar or the **Products** action on Welcome;
 - the same page inside every cluster under **Products** in the sidebar;
 - product/service/component filtering and persistent hidden components;
+- filter, hidden-toggle, and scroll state preserved while visiting targets;
+- multiple namespaces per component, without duplicating table rows;
 - one-click cross-cluster navigation which activates the selected catalog
   cluster, selects the component namespace, and opens **Workloads → Pods**;
 - a validated JSON editor in **Preferences → Extensions → Product navigation**.
 
-The global page and cross-frame hand-off use only public Freelens extension
-points: `globalPages`, `topBarItems`, Catalog entities, extension IPC,
-`namespaceStore`, and renderer navigation. No Freelens fork or private source
-import is required.
+The global page and cross-frame hand-off use Freelens extension points:
+`globalPages`, `topBarItems`, Catalog entities, extension IPC, `namespaceStore`,
+and renderer navigation. A small DOM placement shim moves the legacy
+`topBarItems` registration beside Home because that API currently registers
+all extension items on the right and exposes no side/order option. No Freelens
+fork or private source import is required.
 
 ## Configuration format
 
-The format is intentionally identical to the `productNavigation` preference in
-the original fork. Cluster IDs in component `clusters` refer to entries in the
-top-level `clusters` array. A configured cluster ID is resolved against either
-the catalog entity ID or its name.
+Every component uses an explicit `targets` array. Cluster IDs in each target
+refer to entries in the top-level `clusters` array. A configured cluster ID is
+resolved against either the catalog entity ID or its name.
 
 ```json
 {
@@ -43,8 +46,10 @@ the catalog entity ID or its name.
         {
           "id": "checkout-api",
           "name": "API",
-          "namespace": "checkout",
-          "clusters": ["development", "production"]
+          "targets": [
+            { "namespace": "checkout-dev", "clusters": ["development"] },
+            { "namespace": "checkout-stage", "clusters": ["production"] }
+          ]
         }
       ]
     }
@@ -59,7 +64,11 @@ the catalog entity ID or its name.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
-component is validated before **Apply** is enabled.
+component is validated before **Apply** is enabled. Each component has a
+`targets` array; every target explicitly binds one `namespace` to the clusters
+where that namespace exists. Targets are shown in the same component row, so
+different environments do not create duplicate component rows or accidental
+namespace × cluster combinations.
 
 ## Build and install
 
@@ -71,11 +80,26 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `freelens-product-navigation-extension-0.2.1.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.1.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
 npm semver; keep `engines.freelens` in the `^major.minor.patch` form.
+
+After the first npm publication, users can instead enter the lowercase package
+name directly in Freelens:
+
+```text
+@mryoda/freelens-product-navigation-extension
+```
+
+Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
+name even though GitHub account names are case-insensitive. To publish, create
+the `mryoda` npm organization/scope and configure npm trusted publishing for
+this GitHub repository, workflow `publish.yml`, and environment `npm`. Then set
+`package.json.version` to an unpublished version and publish a GitHub Release;
+the workflow builds, validates, and publishes the public package with npm
+provenance. A maintainer can also run it manually from **Actions**.
 
 ## Real Freelens GUI smoke test
 
@@ -119,6 +143,8 @@ rehydration across application launches.
   preferences.
 - `src/renderer/navigation.ts` performs catalog activation and the readiness
   handshake needed when a cluster frame has not been created yet.
+- `docs/freelens-ux-research.md` evaluates Hotbar, quick-palette, and
+  multi-cluster dashboard options against the Freelens 1.10.3 extension API.
 
 The renderer deliberately distinguishes the application window from cluster
 frames before accessing Kubernetes stores: those stores are unavailable in the

@@ -44,7 +44,7 @@ for (const field of ["main", "renderer"]) {
     Renderer: {
       LensExtension: class {},
       Catalog: { getActiveCluster: () => ({ name: "test-cluster" }) },
-      Component: { Button: () => null, Icon: () => null },
+      Component: { Button: () => null, Icon: () => null, Notifications: { error: () => undefined } },
       K8sApi: { namespaceStore: { selectSingle: () => undefined } },
       Ipc: class { static createInstance() { return new this(); } listen() {} broadcast() {} }, Navigation: { navigate: () => undefined },
     },

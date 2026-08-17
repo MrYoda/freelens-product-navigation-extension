@@ -16,6 +16,9 @@ export interface ProductNavigationService {
 export interface ProductNavigationComponent {
   id: string;
   name: string;
+  targets: ProductNavigationTarget[];
+}
+export interface ProductNavigationTarget {
   namespace: string;
   clusters: string[];
 }
@@ -84,13 +87,25 @@ export function parseConfig(json: string): ValidationResult {
       if (!isNonEmptyString(component.id)) errors.push(`${componentPath}.id must be a non-empty string`);
       else validateUniqueId(componentIds, component.id, componentPath, errors);
       if (!isNonEmptyString(component.name)) errors.push(`${componentPath}.name must be a non-empty string`);
-      if (!isNonEmptyString(component.namespace)) errors.push(`${componentPath}.namespace must be a non-empty string`);
-      if (!Array.isArray(component.clusters)) { errors.push(`${componentPath}.clusters must be an array`); return; }
-      const clusterIds = new Set<string>();
-      component.clusters.forEach((clusterId, clusterIndex) => {
-        const clusterPath = `${componentPath}.clusters[${clusterIndex}]`;
-        if (!isNonEmptyString(clusterId) || !collections.get("clusters")?.has(clusterId)) errors.push(`${clusterPath} must reference an existing cluster`);
-        else validateUniqueId(clusterIds, clusterId, clusterPath, errors);
+      if (!Array.isArray(component.targets)) {
+        errors.push(`${componentPath}.targets must be an array of namespace and clusters objects`);
+        return;
+      }
+      if (component.targets.length === 0) errors.push(`${componentPath}.targets must contain at least one target`);
+      const namespaceNames = new Set<string>();
+      component.targets.forEach((target, targetIndex) => {
+        const targetPath = `${componentPath}.targets[${targetIndex}]`;
+        if (!isObject(target)) { errors.push(`${targetPath} must be an object`); return; }
+        if (!isNonEmptyString(target.namespace)) errors.push(`${targetPath}.namespace must be a non-empty string`);
+        else validateUniqueId(namespaceNames, target.namespace, `${targetPath}.namespace`, errors);
+        if (!Array.isArray(target.clusters)) { errors.push(`${targetPath}.clusters must be an array`); return; }
+        if (target.clusters.length === 0) errors.push(`${targetPath}.clusters must contain at least one cluster`);
+        const clusterIds = new Set<string>();
+        target.clusters.forEach((clusterId, clusterIndex) => {
+          const clusterPath = `${targetPath}.clusters[${clusterIndex}]`;
+          if (!isNonEmptyString(clusterId) || !collections.get("clusters")?.has(clusterId)) errors.push(`${clusterPath} must reference an existing cluster`);
+          else validateUniqueId(clusterIds, clusterId, clusterPath, errors);
+        });
       });
     });
   });
@@ -113,6 +128,8 @@ export function parseConfig(json: string): ValidationResult {
 
 export const getSummary = (value: ProductNavigationPreferences) => {
   const componentCount = value.services.reduce((sum, service) => sum + service.components.length, 0);
-  const targetCount = value.services.reduce((sum, service) => sum + service.components.reduce((total, component) => total + component.clusters.length, 0), 0);
+  const targetCount = value.services.reduce((sum, service) => sum + service.components.reduce(
+    (total, component) => total + component.targets.reduce((targetTotal, target) => targetTotal + target.clusters.length, 0), 0,
+  ), 0);
   return `${value.clusters.length} clusters, ${value.products.length} products, ${value.services.length} services, ${componentCount} components, ${targetCount} targets`;
 };

@@ -22,14 +22,22 @@ export default class ProductNavigationRendererExtension extends Renderer.LensExt
   globalPages = [{ id: "product-navigation-global", components: { Page: ProductsPage } }];
   clusterPages = [{ id: "product-navigation-cluster", components: { Page: ProductsPage } }];
   clusterPageMenus = [{ id: "product-navigation-cluster", target: { pageId: "product-navigation-cluster" }, title: "Products", components: { Icon: ProductsIcon } }];
-  topBarItems = [{ components: { Item: () => <button
+  topBarItems = [{ components: { Item: () => {
+    const ref = React.useRef<HTMLButtonElement>(null);
+    React.useLayoutEffect(() => {
+      const item = ref.current?.parentElement;
+      const home = document.querySelector('[data-testid="home-button"]')?.parentElement;
+      if (item && home?.parentElement) home.after(item);
+    }, []);
+    return <button ref={ref}
     aria-label="Products"
     className="ProductNavigationTopBarButton"
     data-testid="product-navigation-top-bar-button"
     onClick={() => void this.openGlobalProducts()}
     title="Products"
     type="button"
-  ><Renderer.Component.Icon material="account_tree" /></button> } }];
+    ><Renderer.Component.Icon material="account_tree" /></button>;
+  } } }];
   welcomeMenus = [{
     title: "Products",
     icon: "account_tree",
