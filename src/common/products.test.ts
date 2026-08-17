@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeConfig, parseConfig } from "./products.ts";
+import { defaultConfig, normalizeConfig, parseConfig, parseConfigBlock } from "./products.ts";
 
 const valid = {
   clusters: [{ id: "cluster-a", name: "Cluster A" }],
@@ -10,13 +10,14 @@ const valid = {
   ] }],
   hidden: { services: { "service-a": { components: ["component-a"] } } },
 };
+const normalizedValid = { ...valid, updates: defaultConfig.updates };
 
 test("accepts the explicit target format unchanged", () => {
-  assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: valid });
+  assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: normalizedValid });
 });
 
 test("normalizes omitted nested collections", () => {
-  assert.deepEqual(normalizeConfig(), { clusters: [], products: [], services: [], hidden: { services: {} } });
+  assert.deepEqual(normalizeConfig(), defaultConfig);
 });
 
 test("accepts explicit namespace and cluster target pairs", () => {
@@ -56,4 +57,13 @@ test("validates duplicate ids and cross references", () => {
   assert.match(errors, /Duplicate id "cluster-a"/);
   assert.match(errors, /must reference an existing cluster/);
   assert.match(errors, /must reference a component/);
+});
+
+test("parses one root block while preserving all other blocks and update settings", () => {
+  const current = normalizeConfig(valid);
+  const result = parseConfigBlock("products", '[{"id":"product-a","name":"Renamed"}]', current);
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.value?.products[0].name, "Renamed");
+  assert.deepEqual(result.value?.clusters, current.clusters);
+  assert.deepEqual(result.value?.updates, current.updates);
 });

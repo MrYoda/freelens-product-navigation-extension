@@ -3,6 +3,20 @@ export interface ProductNavigationPreferences {
   products: ProductNavigationProduct[];
   services: ProductNavigationService[];
   hidden: ProductNavigationHidden;
+  updates: ProductNavigationUpdates;
+}
+
+export type ProductNavigationBlock = "clusters" | "products" | "services" | "hidden";
+export type ProductNavigationUpdateInterval = "hour" | "six-hours" | "day" | "week";
+export interface ProductNavigationUpdateStatus { attemptedAt: string; success: boolean; message: string }
+export interface ProductNavigationBlockUpdate {
+  enabled: boolean;
+  url: string;
+  lastStatus?: ProductNavigationUpdateStatus;
+}
+export interface ProductNavigationUpdates {
+  interval: ProductNavigationUpdateInterval;
+  blocks: Record<ProductNavigationBlock, ProductNavigationBlockUpdate>;
 }
 
 export interface ProductNavigationCluster { id: string; name: string }
@@ -31,6 +45,15 @@ export const defaultConfig: ProductNavigationPreferences = {
   products: [],
   services: [],
   hidden: { services: {} },
+  updates: {
+    interval: "day",
+    blocks: {
+      clusters: { enabled: false, url: "" },
+      products: { enabled: false, url: "" },
+      services: { enabled: false, url: "" },
+      hidden: { enabled: false, url: "" },
+    },
+  },
 };
 
 export const normalizeConfig = (value?: Partial<ProductNavigationPreferences>): ProductNavigationPreferences => ({
@@ -38,6 +61,15 @@ export const normalizeConfig = (value?: Partial<ProductNavigationPreferences>): 
   products: value?.products ?? [],
   services: value?.services?.map(service => ({ ...service, components: service.components ?? [] })) ?? [],
   hidden: { services: value?.hidden?.services ?? {} },
+  updates: {
+    interval: value?.updates?.interval ?? "day",
+    blocks: {
+      clusters: { ...defaultConfig.updates.blocks.clusters, ...value?.updates?.blocks?.clusters },
+      products: { ...defaultConfig.updates.blocks.products, ...value?.updates?.blocks?.products },
+      services: { ...defaultConfig.updates.blocks.services, ...value?.updates?.blocks?.services },
+      hidden: { ...defaultConfig.updates.blocks.hidden, ...value?.updates?.blocks?.hidden },
+    },
+  },
 });
 
 export interface ValidationResult { errors: string[]; value?: ProductNavigationPreferences }
@@ -124,6 +156,20 @@ export function parseConfig(json: string): ValidationResult {
   });
 
   return errors.length ? { errors } : { errors: [], value: normalizeConfig(parsed as Partial<ProductNavigationPreferences>) };
+}
+
+export function parseConfigBlock(
+  block: ProductNavigationBlock,
+  json: string,
+  current: ProductNavigationPreferences,
+): ValidationResult {
+  let parsed: unknown;
+  try { parsed = JSON.parse(json); } catch (error) {
+    return { errors: [error instanceof Error ? error.message : "Invalid JSON"] };
+  }
+  const result = parseConfig(JSON.stringify({ ...current, [block]: parsed }));
+  if (!result.value) return result;
+  return { errors: [], value: result.value };
 }
 
 export const getSummary = (value: ProductNavigationPreferences) => {

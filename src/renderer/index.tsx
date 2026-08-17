@@ -4,6 +4,7 @@ import { getProductNavigationStore } from "../common/store";
 import { activateNavigation } from "./navigation";
 import { Preferences } from "./preferences";
 import { ProductsIcon, ProductsPage } from "./products-page";
+import { activateUpdates } from "./updates";
 import styles from "./styles.css?inline";
 
 const styleId = "freelens-product-navigation-extension-styles";
@@ -45,11 +46,12 @@ export default class ProductNavigationRendererExtension extends Renderer.LensExt
   }];
   appPreferences = [{
     title: "Product navigation",
-    components: { Hint: () => <span>Configure clusters, products, services, components, and hidden components as JSON.</span>, Input: () => <Preferences /> },
+    components: { Hint: () => <span>Configure and optionally update clusters, products, services, and hidden components from separate JSON sources.</span>, Input: () => <Preferences /> },
   }];
 
   onActivate() {
     getProductNavigationStore().loadExtension(this);
     activateNavigation(this);
+    activateUpdates(this);
   }
 }

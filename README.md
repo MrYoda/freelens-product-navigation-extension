@@ -8,12 +8,17 @@ the original Freelens fork into an independently installable extension.
 - a global **Products** page, opened with the `account_tree` button in the
   application top bar or the **Products** action on Welcome;
 - the same page inside every cluster under **Products** in the sidebar;
-- product/service/component filtering and persistent hidden components;
-- filter, hidden-toggle, and scroll state preserved while visiting targets;
+- free-text filtering plus autocomplete for service, component, cluster, and
+  namespace labels, with OR within a label type and AND between types;
+- selected labels, unfinished search text, hidden-toggle, and scroll state
+  preserved while visiting targets;
 - multiple namespaces per component, without duplicating table rows;
 - one-click cross-cluster navigation which activates the selected catalog
   cluster, selects the component namespace, and opens **Workloads → Pods**;
-- a validated JSON editor in **Preferences → Extensions → Product navigation**.
+- separate validated JSON editors for clusters, products, services, and hidden
+  components in **Preferences → Extensions → Product navigation**;
+- optional scheduled updates of each JSON block from an HTTPS URL, `file://`
+  URL, or local path, with per-block status and manual refresh.
 
 The global page and cross-frame hand-off use Freelens extension points:
 `globalPages`, `topBarItems`, Catalog entities, extension IPC, `namespaceStore`,
@@ -24,7 +29,13 @@ fork or private source import is required.
 
 ## Configuration format
 
-Every component uses an explicit `targets` array. Cluster IDs in each target
+Preferences presents the four root blocks as independent options. This lets a
+team update frequently changing services without replacing cluster names or a
+user's hidden-component choices. The four domain blocks are shown together
+below for reference; each editor contains only its own root value (`clusters`,
+`products`, `services`, or `hidden`), while refresh settings and statuses are
+managed by the controls beside it. Every component uses an explicit `targets`
+array. Cluster IDs in each target
 refer to entries in the top-level `clusters` array. A configured cluster ID is
 resolved against either the catalog entity ID or its name.
 
@@ -62,6 +73,20 @@ resolved against either the catalog entity ID or its name.
 }
 ```
 
+Each block can optionally be refreshed from a local path, a `file://` URL, or
+an `http://`/`https://` URL. The source must return the block value itself: an
+array for `clusters`, `products`, and `services`, or an object containing the
+`services` map for `hidden`. Automatic refresh can run every hour, six hours,
+day (the default), or week. Freelens checks every five minutes and refreshes a
+block when at least that interval has elapsed since its last attempt. Attempt
+time and success/error information are persisted and displayed beside the
+block. **Update now** uses the same validation and status path even when
+automatic refresh is disabled.
+
+Updates are applied in dependency order (`clusters`, `products`, `services`,
+then `hidden`) and each candidate is validated against the currently stored
+other blocks. Invalid or unreachable content never replaces a valid block.
+
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
 component is validated before **Apply** is enabled. Each component has a
@@ -94,9 +119,12 @@ name directly in Freelens:
 ```
 
 Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
-name even though GitHub account names are case-insensitive. To publish, create
-the `mryoda` npm organization/scope and configure npm trusted publishing for
-this GitHub repository, workflow `publish.yml`, and environment `npm`. Then set
+name even though GitHub account names are case-insensitive. To publish, make
+sure the npm account owns the `mryoda` scope and configure npm trusted
+publishing for this GitHub repository, workflow `publish.yml`, and environment
+`npm` (the names are case-sensitive). No `NPM_TOKEN` is required. The workflow
+updates npm to a version with OIDC trusted-publishing support and publishes
+explicitly as a public package with provenance. Then set
 `package.json.version` to an unpublished version and publish a GitHub Release;
 the workflow builds, validates, and publishes the public package with npm
 provenance. A maintainer can also run it manually from **Actions**.
