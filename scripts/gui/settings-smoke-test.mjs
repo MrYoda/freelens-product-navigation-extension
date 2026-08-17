@@ -37,8 +37,8 @@ const waitFor = async (description, operation) => {
 };
 
 await evaluate("LensExtensions.Renderer.Navigation.navigate('/preferences')");
-await waitFor("extension preferences entry", () => evaluate(`Boolean([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim() === "freelens-product-navigation-extension"))`));
-await evaluate(`([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim() === "freelens-product-navigation-extension")).click()`);
+await waitFor("extension preferences entry", () => evaluate(`Boolean([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim().endsWith("freelens-product-navigation-extension")))`));
+await evaluate(`([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim().endsWith("freelens-product-navigation-extension"))).click()`);
 const stored = await waitFor("product navigation JSON editor", () => evaluate("document.querySelector('.ProductNavigationPreferences textarea')?.value"));
 const config = JSON.parse(stored);
 if (expectedName) assert.equal(config.products[0]?.name, expectedName, "the persisted product name was not loaded into Preferences");
