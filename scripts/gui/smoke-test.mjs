@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
 
 const debuggingPort = process.env.CDP_PORT ?? "9222";
 const timeoutAt = Date.now() + 60_000;
@@ -83,14 +84,24 @@ const openTarget = async (buttonText, namespace, podName) => {
 
 await openProducts();
 await evaluate(`(() => {
-  const input = document.querySelector(".ProductNavigationFilter");
+  const input = document.querySelector(".ProductNavigationFilter input");
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "");
   input.dispatchEvent(new Event("input", { bubbles: true }));
 })()`, rootContext);
 await waitFor("unfiltered Products table", () => evaluate("document.querySelector('[data-testid=product-navigation-page]').innerText.includes('Checkout A')", rootContext));
 assert(await evaluate(`document.querySelector('[data-testid="home-button"]').parentElement.nextElementSibling.querySelector('[data-testid="product-navigation-top-bar-button"]') !== null`, rootContext), "Products follows Home in the top bar");
 await evaluate(`(() => {
-  const input = document.querySelector(".ProductNavigationFilter");
+  const input = document.querySelector(".ProductNavigationFilter input");
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "Cluster B");
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  input.focus();
+})()`, rootContext);
+await waitFor("cluster autocomplete", () => evaluate(`document.querySelector('[role="listbox"]')?.innerText.includes("Cluster B")`, rootContext));
+await evaluate(`([...document.querySelectorAll('[role="option"]')].find(option => option.textContent.includes("Cluster B")))?.click()`, rootContext);
+await waitFor("selected cluster label", () => evaluate(`document.querySelector('.ProductNavigationChip.is-cluster')?.innerText.includes("Cluster B")`, rootContext));
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationChip .Icon').length", rootContext), 1, "selected label has an entity icon");
+await evaluate(`(() => {
+  const input = document.querySelector(".ProductNavigationFilter input");
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "Checkout B");
   input.dispatchEvent(new Event("input", { bubbles: true }));
 })()`, rootContext);
@@ -107,11 +118,13 @@ await waitFor("Checkout B target", async () => {
   }
 });
 await openProducts();
-assert.equal(await evaluate("document.querySelector('.ProductNavigationFilter').value", rootContext), "Checkout B", "filter survives target navigation");
+assert.equal(await evaluate("document.querySelector('.ProductNavigationFilter input').value", rootContext), "Checkout B", "filter survives target navigation");
+assert.equal(await evaluate("document.querySelector('.ProductNavigationChip.is-cluster').innerText.includes('Cluster B')", rootContext), true, "selected label survives target navigation");
 await evaluate(`(() => {
-  const input = document.querySelector(".ProductNavigationFilter");
+  const input = document.querySelector(".ProductNavigationFilter input");
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "");
   input.dispatchEvent(new Event("input", { bubbles: true }));
+  document.querySelector('.ProductNavigationChip button').click();
   [...document.querySelectorAll("tr")].find(row => row.textContent.includes("Checkout A")).querySelector('input[type="checkbox"]').click();
 })()`, rootContext);
 await waitFor("hidden component", async () => !(await evaluate("document.querySelector('[data-testid=product-navigation-page]').innerText.includes('Checkout A')", rootContext)));
@@ -129,5 +142,18 @@ await waitFor("cluster Products page", async () => {
   const state = await evaluate("({ href: location.href, text: document.body.innerText })", clusterB.contextId);
   return state.href.endsWith("/product-navigation-cluster") && state.text.includes("Checkout A") && state.text.includes("Checkout B");
 });
+if (process.env.SCREENSHOT_PATH) {
+  await command("Page.enable");
+  await openProducts();
+  await evaluate(`(() => {
+    const input = document.querySelector(".ProductNavigationFilter input");
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, "Cluster");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  })()`, rootContext);
+  await waitFor("autocomplete screenshot state", () => evaluate("Boolean(document.querySelector('[role=listbox]'))", rootContext));
+  const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+  await writeFile(process.env.SCREENSHOT_PATH, screenshot.data, "base64");
+}
 console.log(`GUI smoke test passed: ${clusterA.state.href} (team-a), ${clusterB.state.href} (team-b), and the cluster Products table`);
 socket.close();

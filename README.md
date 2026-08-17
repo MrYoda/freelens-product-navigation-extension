@@ -8,8 +8,10 @@ the original Freelens fork into an independently installable extension.
 - a global **Products** page, opened with the `account_tree` button in the
   application top bar or the **Products** action on Welcome;
 - the same page inside every cluster under **Products** in the sidebar;
-- product/service/component filtering and persistent hidden components;
-- filter, hidden-toggle, and scroll state preserved while visiting targets;
+- free-text filtering plus autocomplete for service, component, cluster, and
+  namespace labels, with OR within a label type and AND between types;
+- selected labels, unfinished search text, hidden-toggle, and scroll state
+  preserved while visiting targets;
 - multiple namespaces per component, without duplicating table rows;
 - one-click cross-cluster navigation which activates the selected catalog
   cluster, selects the component namespace, and opens **Workloads → Pods**;
@@ -94,9 +96,12 @@ name directly in Freelens:
 ```
 
 Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
-name even though GitHub account names are case-insensitive. To publish, create
-the `mryoda` npm organization/scope and configure npm trusted publishing for
-this GitHub repository, workflow `publish.yml`, and environment `npm`. Then set
+name even though GitHub account names are case-insensitive. To publish, make
+sure the npm account owns the `mryoda` scope and configure npm trusted
+publishing for this GitHub repository, workflow `publish.yml`, and environment
+`npm` (the names are case-sensitive). No `NPM_TOKEN` is required. The workflow
+updates npm to a version with OIDC trusted-publishing support and publishes
+explicitly as a public package with provenance. Then set
 `package.json.version` to an unpublished version and publish a GitHub Release;
 the workflow builds, validates, and publishes the public package with npm
 provenance. A maintainer can also run it manually from **Actions**.

@@ -2,7 +2,22 @@
 .ProductNavigationTopBarButton { appearance: none; background: transparent; border: 0; color: inherit; cursor: pointer; margin-left: 8px; padding: 0; }
 .ProductNavigationPage header { align-items: flex-start; display: flex; justify-content: space-between; }
 .ProductNavigationPage h1 { margin: 0; }
-.ProductNavigationFilter { box-sizing: border-box; margin: 16px 0 24px; padding: 8px; width: 100%; }
+.ProductNavigationSearch { margin: 16px 0 24px; position: relative; }
+.ProductNavigationFilter { align-items: center; background: var(--inputControlBackground, rgba(127, 127, 127, .08)); border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; cursor: text; display: flex; flex-wrap: wrap; gap: 6px; min-height: 42px; padding: 5px 8px; width: 100%; }
+.ProductNavigationFilter:focus-within { border-color: var(--colorInfo, #3d90ce); box-shadow: 0 0 0 1px var(--colorInfo, #3d90ce); }
+.ProductNavigationFilter input { background: transparent; border: 0; color: inherit; flex: 1 1 280px; min-width: 160px; outline: none; padding: 5px 2px; }
+.ProductNavigationChip { align-items: center; border: 1px solid currentColor; border-radius: 14px; display: inline-flex; font-size: 12px; gap: 4px; max-width: 280px; padding: 3px 5px 3px 7px; }
+.ProductNavigationChip .Icon, .ProductNavigationSuggestion .Icon { font-size: 16px; }
+.ProductNavigationChipType { font-weight: 700; }
+.ProductNavigationChip button { background: transparent; border: 0; color: inherit; cursor: pointer; font-size: 18px; line-height: 14px; padding: 0 2px; }
+.ProductNavigationSuggestions { background: var(--mainBackground, #fff); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .24); left: 0; max-height: 280px; overflow: auto; position: absolute; right: 0; top: calc(100% + 4px); z-index: 10; }
+.ProductNavigationSuggestion { align-items: center; background: transparent; border: 0; color: inherit; cursor: pointer; display: flex; gap: 8px; padding: 9px 12px; text-align: left; width: 100%; }
+.ProductNavigationSuggestion:hover, .ProductNavigationSuggestion.is-active { background: rgba(127, 127, 127, .16); }
+.ProductNavigationSuggestionLabel { flex: 1; font-weight: 600; }
+.ProductNavigationSuggestion.is-service, .ProductNavigationChip.is-service { color: var(--colorInfo, #3282b8); }
+.ProductNavigationSuggestion.is-component, .ProductNavigationChip.is-component { color: var(--colorOk, #3a9d5d); }
+.ProductNavigationSuggestion.is-cluster, .ProductNavigationChip.is-cluster { color: #9b6bd3; }
+.ProductNavigationSuggestion.is-namespace, .ProductNavigationChip.is-namespace { color: #d07a28; }
 .ProductNavigationPage table { border-collapse: collapse; width: 100%; }
 .ProductNavigationPage th, .ProductNavigationPage td { border-bottom: 1px solid var(--border-color); padding: 10px; text-align: left; vertical-align: top; }
 .ProductNavigationTargets, .ProductNavigationActions { display: flex; flex-wrap: wrap; gap: 8px; }

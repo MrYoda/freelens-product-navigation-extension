@@ -14,18 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           version: 10.28.1
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org/
+      # Trusted publishing requires npm 11.5.1 or newer. Node's bundled npm can
+      # be older, in which case npm cannot exchange the GitHub OIDC token.
+      - run: npm install --global npm@latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
       - run: pnpm check:package
-      - run: pnpm publish --no-git-checks
+      - run: pnpm publish --access public --provenance --no-git-checks
