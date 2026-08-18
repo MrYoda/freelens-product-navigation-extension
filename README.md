@@ -119,10 +119,12 @@ name directly in Freelens:
 ```
 
 Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
-name even though GitHub account names are case-insensitive. To publish, make
-sure the npm account owns the `mryoda` scope and configure npm trusted
-publishing for this GitHub repository, workflow `publish.yml`, and environment
-`npm` (the names are case-sensitive). No `NPM_TOKEN` is required. The workflow
+name even though GitHub account names are case-insensitive. npm does not allow a
+trusted publisher to create a brand-new package: publish the first version once
+with `npm publish --access public` from a machine authenticated as an npm user
+that owns the `mryoda` scope. Then configure npm trusted publishing for this
+GitHub repository, workflow `publish.yml`, and environment `npm` (the names are
+case-sensitive). Subsequent workflow runs need no `NPM_TOKEN`. The workflow
 updates npm to a version with OIDC trusted-publishing support and publishes
 explicitly as a public package with provenance. Then set
 `package.json.version` to an unpublished version and publish a GitHub Release;

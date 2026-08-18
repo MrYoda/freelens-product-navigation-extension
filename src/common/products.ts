@@ -56,21 +56,20 @@ export const defaultConfig: ProductNavigationPreferences = {
   },
 };
 
-export const normalizeConfig = (value?: Partial<ProductNavigationPreferences>): ProductNavigationPreferences => ({
-  clusters: value?.clusters ?? [],
-  products: value?.products ?? [],
-  services: value?.services?.map(service => ({ ...service, components: service.components ?? [] })) ?? [],
-  hidden: { services: value?.hidden?.services ?? {} },
-  updates: {
-    interval: value?.updates?.interval ?? "day",
-    blocks: {
-      clusters: { ...defaultConfig.updates.blocks.clusters, ...value?.updates?.blocks?.clusters },
-      products: { ...defaultConfig.updates.blocks.products, ...value?.updates?.blocks?.products },
-      services: { ...defaultConfig.updates.blocks.services, ...value?.updates?.blocks?.services },
-      hidden: { ...defaultConfig.updates.blocks.hidden, ...value?.updates?.blocks?.hidden },
-    },
-  },
-});
+const isCurrentPreferences = (value: unknown): value is ProductNavigationPreferences => {
+  if (!isObject(value)) return false;
+  const updates = value.updates;
+  if (!isObject(updates)) return false;
+  const blocks = updates.blocks;
+  if (!isObject(blocks)) return false;
+  return ["clusters", "products", "services", "hidden"].every(block => isObject(blocks[block]));
+};
+
+/** Load only the four-block format; the former single-editor data is not migrated. */
+export const normalizeConfig = (value?: unknown): ProductNavigationPreferences => {
+  if (!isCurrentPreferences(value)) return structuredClone(defaultConfig);
+  return structuredClone(value);
+};
 
 export interface ValidationResult { errors: string[]; value?: ProductNavigationPreferences }
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -155,7 +154,9 @@ export function parseConfig(json: string): ValidationResult {
     });
   });
 
-  return errors.length ? { errors } : { errors: [], value: normalizeConfig(parsed as Partial<ProductNavigationPreferences>) };
+  if (errors.length) return { errors };
+  const current = isCurrentPreferences(parsed) ? parsed : { ...parsed, updates: defaultConfig.updates };
+  return { errors: [], value: structuredClone(current) as ProductNavigationPreferences };
 }
 
 export function parseConfigBlock(

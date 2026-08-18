@@ -20,7 +20,7 @@ export class ProductNavigationStore extends Common.Store.ExtensionStore<ProductN
     super.loadExtension(extension);
   }
 
-  fromStore(data: Partial<ProductNavigationPreferences>): void {
+  fromStore(data: ProductNavigationPreferences): void {
     this.navigation = normalizeConfig(data);
     this.loaded = true;
   }

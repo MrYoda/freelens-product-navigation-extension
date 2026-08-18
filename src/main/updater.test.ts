@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import test from "node:test";
-import { normalizeConfig } from "../common/products.ts";
+import { defaultConfig, normalizeConfig } from "../common/products.ts";
 import type { ProductNavigationStore } from "../common/store.ts";
 import { ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
 
@@ -22,7 +22,7 @@ test("reads update JSON from local paths, file URLs, and HTTP URLs", async () =>
 test("applies a valid block and records success or failure without changing other blocks", async () => {
   const path = `/tmp/product-navigation-clusters-${process.pid}.json`;
   await writeFile(path, '[{"id":"new-cluster","name":"New Cluster"}]');
-  const navigation = normalizeConfig({ products: [{ id: "product", name: "Product" }] });
+  const navigation = normalizeConfig({ ...defaultConfig, products: [{ id: "product", name: "Product" }] });
   navigation.updates.blocks.clusters = { enabled: true, url: path };
   let storedNavigation = navigation;
   const fakeStore = {
