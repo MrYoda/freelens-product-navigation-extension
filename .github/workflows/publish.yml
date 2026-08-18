@@ -22,9 +22,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      # Trusted publishing requires npm 11.5.1 or newer. Node's bundled npm can
-      # be older, in which case npm cannot exchange the GitHub OIDC token.
-      - run: npm install --global npm@latest
+      # Pin the npm 11 line: trusted publishing requires npm >=11.5.1, while
+      # npm 12 changes install defaults that this pnpm-based build does not need.
+      - run: npm install --global npm@11.19.0
+      - run: npm --version
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm typecheck

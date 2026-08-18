@@ -122,11 +122,23 @@ Package scopes on npm are lowercase, so `@MrYoda/...` is not a valid npm package
 name even though GitHub account names are case-insensitive. npm does not allow a
 trusted publisher to create a brand-new package: publish the first version once
 with `npm publish --access public` from a machine authenticated as an npm user
-that owns the `mryoda` scope. Then configure npm trusted publishing for this
-GitHub repository, workflow `publish.yml`, and environment `npm` (the names are
-case-sensitive). Subsequent workflow runs need no `NPM_TOKEN`. The workflow
-updates npm to a version with OIDC trusted-publishing support and publishes
-explicitly as a public package with provenance. Then set
+that owns the `mryoda` scope. Complete the interactive 2FA challenge if npm asks
+for it; do not create a granular access token (GAT) that bypasses 2FA for this
+workflow.
+
+Then, on the npm package's **Settings → Trusted Publisher** page, select GitHub
+Actions and configure organization/user `MrYoda`, repository
+`freelens-product-navigation-extension`, workflow `publish.yml`, environment
+`npm`, and allow the `npm publish` action. The names are case-sensitive, and the
+workflow file field is a filename rather than `.github/workflows/publish.yml`.
+Keep `id-token: write` in the workflow and enable 2FA on the maintainer account.
+
+Subsequent workflow runs need neither `NPM_TOKEN` nor any other long-lived npm
+token: npm exchanges GitHub's short-lived OIDC identity for publish access. This
+is unaffected by the 2026 removal of direct publishing from 2FA-bypass GATs. The
+workflow pins a compatible npm 11 release, publishes the package as public, and
+attaches provenance. The npm 12 install-time restrictions also do not affect the
+build because dependencies are installed with pnpm. Then set
 `package.json.version` to an unpublished version and publish a GitHub Release;
 the workflow builds, validates, and publishes the public package with npm
 provenance. A maintainer can also run it manually from **Actions**.
