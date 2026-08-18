@@ -16,8 +16,12 @@ test("accepts the explicit target format unchanged", () => {
   assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: normalizedValid });
 });
 
-test("normalizes omitted nested collections", () => {
+test("uses defaults when preferences are absent", () => {
   assert.deepEqual(normalizeConfig(), defaultConfig);
+});
+
+test("does not migrate the former single-JSON preference format", () => {
+  assert.deepEqual(normalizeConfig(valid), defaultConfig);
 });
 
 test("accepts explicit namespace and cluster target pairs", () => {
@@ -60,7 +64,7 @@ test("validates duplicate ids and cross references", () => {
 });
 
 test("parses one root block while preserving all other blocks and update settings", () => {
-  const current = normalizeConfig(valid);
+  const current = normalizeConfig(normalizedValid);
   const result = parseConfigBlock("products", '[{"id":"product-a","name":"Renamed"}]', current);
   assert.deepEqual(result.errors, []);
   assert.equal(result.value?.products[0].name, "Renamed");
