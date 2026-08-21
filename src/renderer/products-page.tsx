@@ -3,8 +3,18 @@ import { Renderer } from "@freelensapp/extensions";
 import { getProductNavigationStore } from "../common/store";
 import { navigateToProductTarget } from "./navigation";
 import { componentMatchesText, componentMatchesTokens, getSearchTokens, searchEntityDetails, suggestSearchTokens, type SearchToken } from "../common/search";
+import { expandButtonUrl, type ProductNavigationButtonEntity } from "../common/products";
 
 export const ProductsIcon = () => <Renderer.Component.Icon material="account_tree" />;
+
+const CustomButtons = ({ entity, values }: { entity: ProductNavigationButtonEntity; values: Record<string, string> }) => {
+  const buttons = getProductNavigationStore().navigation.customButtons.filter(button => button.entity === entity);
+  if (!buttons.length) return null;
+  return <span className="ProductNavigationCustomButtons">{buttons.map(button => <button type="button" className="ProductNavigationCustomButton" key={button.id} title={button.hint}
+    aria-label={button.hint || `Open ${button.id}`} onClick={() => window.open(expandButtonUrl(button.url, values), "_blank", "noopener,noreferrer")}>
+    <Renderer.Component.Icon material={button.icon} />
+  </button>)}</span>;
+};
 
 const pageState: { filter: string; selected: SearchToken[]; showHidden: boolean; scrollTop: number } = { filter: "", selected: [], showHidden: false, scrollTop: 0 };
 export const ProductsPage = () => {
@@ -87,12 +97,15 @@ export const ProductsPage = () => {
         {visibleServices.flatMap(({ service, components }) => components.map((component, index) => {
           const hidden = isHidden(service.id, component.id);
           return <tr className={hidden ? "is-hidden" : undefined} key={`${service.id}:${component.id}`}>
-            {index === 0 && <td rowSpan={components.length}>{service.name}</td>}<td>{component.name}</td><td>
+            {index === 0 && <td rowSpan={components.length}>{service.name}<CustomButtons entity="service" values={{ serviceId: service.id, serviceName: service.name }} /></td>}<td>{component.name}<CustomButtons entity="component" values={{ serviceId: service.id, serviceName: service.name, componentId: component.id, componentName: component.name }} /></td><td>
               {component.targets.map(target => <div className="ProductNavigationNamespaceTarget" key={target.namespace}>
                 <div className="ProductNavigationNamespace">{target.namespace}</div><div className="ProductNavigationTargets">
-                  {target.clusters.map(clusterId => <Renderer.Component.Button aria-label={`Open ${component.name} in ${target.namespace} on ${clustersById.get(clusterId)?.name ?? clusterId}`} className="ProductNavigationTarget" key={clusterId} label={clustersById.get(clusterId)?.name ?? clusterId} primary onClick={() => {
-                    navigateToProductTarget(target.namespace, clusterId).catch(reason => Renderer.Component.Notifications.error(reason instanceof Error ? reason.message : String(reason)));
-                  }} />)}
+                  {target.clusters.map(clusterId => { const clusterName = clustersById.get(clusterId)?.name ?? clusterId; const values = { serviceId: service.id, serviceName: service.name, componentId: component.id, componentName: component.name, namespace: target.namespace, clusterId, clusterName, clusterShortId: clusterId.split(".", 1)[0] }; const hasActions = navigation.customButtons.some(button => button.entity === "target"); return <span className={`ProductNavigationTargetGroup${hasActions ? " has-actions" : ""}`} key={clusterId}>
+                    <Renderer.Component.Button aria-label={`Open ${component.name} in ${target.namespace} on ${clusterName}`} className="ProductNavigationTarget" label={clusterName} primary onClick={() => {
+                      navigateToProductTarget(target.namespace, clusterId).catch(reason => Renderer.Component.Notifications.error(reason instanceof Error ? reason.message : String(reason)));
+                    }} />
+                    {hasActions && <details className="ProductNavigationTargetMenu"><summary aria-label={`Actions for ${clusterName}`}>▾</summary><div><CustomButtons entity="target" values={values} /></div></details>}
+                  </span>; })}
                 </div>
               </div>)}</td><td><label><input type="checkbox" checked={hidden} onChange={event => setHidden(service.id, component.id, event.currentTarget.checked)} /> Hide</label></td>
           </tr>;

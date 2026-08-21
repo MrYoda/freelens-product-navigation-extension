@@ -14,7 +14,7 @@ const navigation: ProductNavigationPreferences = {
     { id: "catalog", name: "Catalog", components: [
       { id: "catalog-api", name: "API", targets: [{ namespace: "shop", clusters: ["cluster-b"] }] },
     ] },
-  ], hidden: { services: {} }, updates: defaultConfig.updates,
+  ], hidden: { services: {} }, updates: defaultConfig.updates, customButtons: [], openProductsOnStartup: false,
 };
 const checkoutApi = navigation.services[0].components[0];
 
@@ -25,6 +25,16 @@ test("suggests unique typed entities after two characters and excludes selected 
     ["component", "checkout-api"], ["component", "catalog-api"],
   ]);
   assert.deepEqual(suggestSearchTokens(all, "shop", [{ type: "namespace", value: "shop", label: "shop" }]), []);
+});
+
+test("groups suggestions by service, namespace, component, then cluster", () => {
+  const tokens: SearchToken[] = [
+    { type: "cluster", value: "match-cluster", label: "Match cluster" },
+    { type: "component", value: "match-component", label: "Match component" },
+    { type: "namespace", value: "match-namespace", label: "Match namespace" },
+    { type: "service", value: "match-service", label: "Match service" },
+  ];
+  assert.deepEqual(suggestSearchTokens(tokens, "match", []).map(token => token.type), ["service", "namespace", "component", "cluster"]);
 });
 
 test("combines values of one entity type with OR and different types with AND", () => {

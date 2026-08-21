@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { defaultConfig, normalizeConfig, parseConfig, parseConfigBlock } from "./products.ts";
+import { defaultConfig, expandButtonUrl, normalizeConfig, parseConfig, parseConfigBlock } from "./products.ts";
 
 const valid = {
   clusters: [{ id: "cluster-a", name: "Cluster A" }],
@@ -10,7 +10,7 @@ const valid = {
   ] }],
   hidden: { services: { "service-a": { components: ["component-a"] } } },
 };
-const normalizedValid = { ...valid, updates: defaultConfig.updates };
+const normalizedValid = { ...valid, updates: defaultConfig.updates, customButtons: [], openProductsOnStartup: false };
 
 test("accepts the explicit target format unchanged", () => {
   assert.deepEqual(parseConfig(JSON.stringify(valid)), { errors: [], value: normalizedValid });
@@ -70,4 +70,8 @@ test("parses one root block while preserving all other blocks and update setting
   assert.equal(result.value?.products[0].name, "Renamed");
   assert.deepEqual(result.value?.clusters, current.clusters);
   assert.deepEqual(result.value?.updates, current.updates);
+});
+
+test("expands and URL-encodes custom button macros", () => {
+  assert.equal(expandButtonUrl("https://example.test/{clusterShortId}?service={serviceName}", { clusterShortId: "shop-1", serviceName: "Shop API" }), "https://example.test/shop-1?service=Shop%20API");
 });

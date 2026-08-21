@@ -4,10 +4,12 @@ export interface ProductNavigationPreferences {
   services: ProductNavigationService[];
   hidden: ProductNavigationHidden;
   updates: ProductNavigationUpdates;
+  customButtons: ProductNavigationCustomButton[];
+  openProductsOnStartup: boolean;
 }
 
 export type ProductNavigationBlock = "clusters" | "products" | "services" | "hidden";
-export type ProductNavigationUpdateInterval = "hour" | "six-hours" | "day" | "week";
+export type ProductNavigationUpdateInterval = "never" | "hour" | "six-hours" | "day" | "week";
 export interface ProductNavigationUpdateStatus { attemptedAt: string; success: boolean; message: string }
 export interface ProductNavigationBlockUpdate {
   enabled: boolean;
@@ -39,6 +41,15 @@ export interface ProductNavigationTarget {
 export interface ProductNavigationHidden {
   services: Record<string, { components: string[] }>;
 }
+export type ProductNavigationButtonEntity = "service" | "component" | "target";
+export interface ProductNavigationCustomButton {
+  id: string;
+  entity: ProductNavigationButtonEntity;
+  icon: string;
+  action: "link";
+  url: string;
+  hint?: string;
+}
 
 export const defaultConfig: ProductNavigationPreferences = {
   clusters: [],
@@ -46,7 +57,7 @@ export const defaultConfig: ProductNavigationPreferences = {
   services: [],
   hidden: { services: {} },
   updates: {
-    interval: "day",
+    interval: "never",
     blocks: {
       clusters: { enabled: false, url: "" },
       products: { enabled: false, url: "" },
@@ -54,6 +65,8 @@ export const defaultConfig: ProductNavigationPreferences = {
       hidden: { enabled: false, url: "" },
     },
   },
+  customButtons: [],
+  openProductsOnStartup: false,
 };
 
 const isCurrentPreferences = (value: unknown): value is ProductNavigationPreferences => {
@@ -68,8 +81,31 @@ const isCurrentPreferences = (value: unknown): value is ProductNavigationPrefere
 /** Load only the four-block format; the former single-editor data is not migrated. */
 export const normalizeConfig = (value?: unknown): ProductNavigationPreferences => {
   if (!isCurrentPreferences(value)) return structuredClone(defaultConfig);
-  return structuredClone(value);
+  const customButtons = Array.isArray(value.customButtons) ? value.customButtons.filter((button): button is ProductNavigationCustomButton =>
+    isObject(button)
+    && isNonEmptyString(button.id)
+    && ["service", "component", "target"].includes(String(button.entity))
+    && isNonEmptyString(button.icon)
+    && button.action === "link"
+    && isNonEmptyString(button.url),
+  ) : [];
+  return structuredClone({
+    ...value,
+    customButtons,
+    openProductsOnStartup: value.openProductsOnStartup === true,
+    updates: { ...value.updates, interval: value.updates.interval ?? "never" },
+  }) as ProductNavigationPreferences;
 };
+
+export const buttonMacros: Record<ProductNavigationButtonEntity, string[]> = {
+  service: ["serviceId", "serviceName"],
+  component: ["serviceId", "serviceName", "componentId", "componentName"],
+  target: ["serviceId", "serviceName", "componentId", "componentName", "namespace", "clusterId", "clusterName", "clusterShortId"],
+};
+
+export function expandButtonUrl(template: string, values: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (macro, name: string) => name in values ? encodeURIComponent(values[name]) : macro);
+}
 
 export interface ValidationResult { errors: string[]; value?: ProductNavigationPreferences }
 const isObject = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
@@ -156,7 +192,7 @@ export function parseConfig(json: string): ValidationResult {
 
   if (errors.length) return { errors };
   const current = isCurrentPreferences(parsed) ? parsed : { ...parsed, updates: defaultConfig.updates };
-  return { errors: [], value: structuredClone(current) as ProductNavigationPreferences };
+  return { errors: [], value: normalizeConfig(current) };
 }
 
 export function parseConfigBlock(
