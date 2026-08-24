@@ -3,6 +3,7 @@ import type { ProductNavigationBlock, ProductNavigationPreferences, ProductNavig
 export const productNavigationBlocks: ProductNavigationBlock[] = ["clusters", "products", "services", "hidden"];
 
 export const updateIntervalMilliseconds: Record<ProductNavigationUpdateInterval, number> = {
+  never: Number.POSITIVE_INFINITY,
   hour: 60 * 60 * 1_000,
   "six-hours": 6 * 60 * 60 * 1_000,
   day: 24 * 60 * 60 * 1_000,
@@ -14,6 +15,7 @@ export const shouldUpdateBlock = (
   block: ProductNavigationBlock,
   now = Date.now(),
 ): boolean => {
+  if (navigation.updates.interval === "never") return false;
   const settings = navigation.updates.blocks[block];
   if (!settings.enabled || !settings.url.trim()) return false;
   const attemptedAt = settings.lastStatus && Date.parse(settings.lastStatus.attemptedAt);

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
 
 const port = process.env.CDP_PORT ?? "9222";
 const expectedName = process.env.EXPECT_PRODUCT_NAME;
 const replacementName = process.env.SET_PRODUCT_NAME;
 const updateProductsPath = process.env.UPDATE_PRODUCTS_PATH;
 const expectedUpdatedName = process.env.EXPECT_UPDATED_PRODUCT_NAME;
+const screenshotPath = process.env.SCREENSHOT_PATH;
 const target = (await fetch(`http://127.0.0.1:${port}/json/list`).then(response => response.json()))
   .find(candidate => candidate.type === "page" && candidate.url.includes("renderer.freelens.app"));
 assert(target, "Freelens renderer was not found on the CDP port");
@@ -15,15 +17,22 @@ await new Promise((resolve, reject) => {
 });
 let id = 0;
 const pending = new Map();
+const runtimeExceptions = [];
 socket.addEventListener("message", event => {
   const message = JSON.parse(event.data);
+  if (message.method === "Runtime.exceptionThrown") runtimeExceptions.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
   const handler = pending.get(message.id);
   if (handler) { pending.delete(message.id); handler(message); }
+});
+const command = (method, params = {}) => new Promise((resolve, reject) => {
+  const commandId = ++id;
+  pending.set(commandId, message => message.error ? reject(new Error(message.error.message)) : resolve(message.result));
+  socket.send(JSON.stringify({ id: commandId, method, params }));
 });
 const evaluate = expression => new Promise((resolve, reject) => {
   const commandId = ++id;
   pending.set(commandId, message => {
-    if (message.error || message.result?.exceptionDetails) reject(new Error(message.error?.message ?? message.result.exceptionDetails.text));
+    if (message.error || message.result?.exceptionDetails) reject(new Error(message.error?.message ?? message.result.exceptionDetails.exception?.description ?? message.result.exceptionDetails.text));
     else resolve(message.result.result.value);
   });
   socket.send(JSON.stringify({ id: commandId, method: "Runtime.evaluate", params: { expression, returnByValue: true } }));
@@ -38,30 +47,53 @@ const waitFor = async (description, operation) => {
   throw new Error(`Timed out waiting for ${description}`);
 };
 
+await command("Runtime.enable");
+
 await evaluate("LensExtensions.Renderer.Navigation.navigate('/preferences')");
 await waitFor("extension preferences entry", () => evaluate(`Boolean([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim().endsWith("freelens-product-navigation-extension")))`));
 await evaluate(`([...document.querySelectorAll("*")].find(element => element.children.length === 0 && element.textContent.trim().endsWith("freelens-product-navigation-extension"))).click()`);
-const stored = await waitFor("separate product JSON editor", () => evaluate(`document.querySelector('textarea[aria-label="Products JSON"]')?.value`));
+const stored = await waitFor("separate product JSON editor", () => evaluate(`document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea')?.value`));
 assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationConfigBlock').length"), 4, "four separate configuration blocks are shown");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationTabs button').length"), 3, "three settings tabs are shown");
+assert.equal(await evaluate(`Boolean([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))`), true, "one shared Apply button is shown");
 const products = JSON.parse(stored);
 if (expectedName) assert.equal(products[0]?.name, expectedName, "the persisted product name was not loaded into Preferences");
+
+await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Custom link buttons'))).click()`);
+await waitFor("custom button constructor", () => evaluate("document.querySelectorAll('.ProductNavigationButtonEditor').length"));
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationButtonEditor').length"), 3, "saved service, component, and target buttons are editable");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationIconPreview .Icon').length"), 3, "button icons have previews");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationButtonUrl textarea').length"), 3, "link templates use multiline inputs");
+assert.equal(await evaluate("[...document.querySelectorAll('.ProductNavigationButtonEditor select')].every(select => !select.disabled)"), true, "action selectors remain enabled");
+await evaluate("document.querySelector('.ProductNavigationIconPickerButton').click()");
+assert.equal(await waitFor("material icon grid", () => evaluate("document.querySelectorAll('.ProductNavigationIconGrid button').length")), 131, "the expanded built-in Material icon set is available");
+await evaluate("document.querySelector('.ProductNavigationIconPickerButton').click()");
+
+await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Automatic updates'))).click()`);
+assert.equal(await waitFor("Never update interval", () => evaluate(`document.querySelector('.ProductNavigationUpdateInterval select')?.value`)), "never");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationUpdateSettings').length"), 0, "per-source settings are hidden for Never");
+
+await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Configuration JSON'))).click()`);
+await waitFor("Products JSON after tab navigation", () => evaluate(`document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea')?.value`));
 
 if (replacementName) {
   products[0].name = replacementName;
   const draft = JSON.stringify(products, null, 2);
   await evaluate(`(() => {
-    const textarea = document.querySelector('textarea[aria-label="Products JSON"]');
+    const textarea = document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea');
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(textarea, ${JSON.stringify(draft)});
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
-  await waitFor("enabled Apply Products button", () => evaluate(`!([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply Products"))?.disabled`));
-  await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply Products")).click()`);
+  await waitFor("enabled shared Apply button", () => evaluate(`!([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
+  await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply")).click()`);
   console.log(`Settings GUI smoke test applied product name: ${replacementName}`);
 } else {
   console.log(`Settings GUI smoke test loaded persisted product name: ${products[0]?.name}`);
 }
 
 if (updateProductsPath) {
+  await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Automatic updates'))).click()`);
+  await evaluate(`(() => { const select = document.querySelector('.ProductNavigationUpdateInterval select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'hour'); select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   const previousStatus = await evaluate(`document.querySelector('[data-block="products"] .ProductNavigationUpdateStatus')?.textContent ?? ""`);
   await evaluate(`(() => {
     const input = document.querySelector('[data-block="products"] .ProductNavigationUpdateSource input');
@@ -72,10 +104,18 @@ if (updateProductsPath) {
   await evaluate(`([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now")).click()`);
   const updatedProductsJson = await waitFor("successful Products update", () => evaluate(`(() => {
     const status = document.querySelector('[data-block="products"] .ProductNavigationUpdateStatus.is-success');
-    return status && status.textContent !== ${JSON.stringify(previousStatus)} && document.querySelector('textarea[aria-label="Products JSON"]').value;
+    return status && status.textContent !== ${JSON.stringify(previousStatus)} && document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea').value;
   })()`));
   const updatedProducts = JSON.parse(updatedProductsJson);
   if (expectedUpdatedName) assert.equal(updatedProducts[0]?.name, expectedUpdatedName, "manual Products update did not reach the editor");
   console.log(`Settings GUI smoke test updated Products from ${updateProductsPath}`);
 }
+if (screenshotPath) {
+  await command("Page.enable");
+  await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Custom link buttons'))).click()`);
+  await waitFor("custom button screenshot state", () => evaluate("document.querySelectorAll('.ProductNavigationButtonEditor').length"));
+  const screenshot = await command("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+  await writeFile(screenshotPath, screenshot.data, "base64");
+}
+assert.deepEqual(runtimeExceptions, [], `renderer exceptions: ${runtimeExceptions.join("\n")}`);
 socket.close();

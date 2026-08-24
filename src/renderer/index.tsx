@@ -16,6 +16,7 @@ if (!document.getElementById(styleId)) {
 }
 
 export default class ProductNavigationRendererExtension extends Renderer.LensExtension {
+  private startupTimer?: ReturnType<typeof setInterval>;
   private async openGlobalProducts() {
     await (this as unknown as { navigate: (pageId: string) => Promise<void> }).navigate("product-navigation-global");
   }
@@ -50,8 +51,20 @@ export default class ProductNavigationRendererExtension extends Renderer.LensExt
   }];
 
   onActivate() {
-    getProductNavigationStore().loadExtension(this);
+    const store = getProductNavigationStore();
+    store.loadExtension(this);
+    this.startupTimer = setInterval(() => {
+      if (!store.loaded) return;
+      if (this.startupTimer) clearInterval(this.startupTimer);
+      this.startupTimer = undefined;
+      if (store.navigation.openProductsOnStartup) void this.openGlobalProducts();
+    }, 100);
+    // The package validator runs onActivate in Node. Do not keep that process
+    // alive while its intentionally minimal store stub remains unloaded.
+    (this.startupTimer as unknown as { unref?: () => void }).unref?.();
     activateNavigation(this);
     activateUpdates(this);
   }
+
+  onDeactivate() { if (this.startupTimer) clearInterval(this.startupTimer); }
 }

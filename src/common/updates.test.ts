@@ -3,9 +3,15 @@ import test from "node:test";
 import { defaultConfig, normalizeConfig } from "./products.ts";
 import { shouldUpdateBlock, updateIntervalMilliseconds } from "./updates.ts";
 
-test("uses a daily update interval by default", () => {
-  assert.equal(normalizeConfig().updates.interval, "day");
+test("disables automatic updates by default", () => {
+  assert.equal(normalizeConfig().updates.interval, "never");
   assert.equal(updateIntervalMilliseconds.day, 24 * 60 * 60 * 1_000);
+});
+
+test("never prevents updates even for enabled sources", () => {
+  const navigation = structuredClone(defaultConfig);
+  navigation.updates.blocks.clusters = { enabled: true, url: "/tmp/clusters.json" };
+  assert.equal(shouldUpdateBlock(navigation, "clusters"), false);
 });
 
 test("only schedules enabled configured blocks after the selected interval", () => {

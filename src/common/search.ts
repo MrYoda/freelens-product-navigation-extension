@@ -39,8 +39,12 @@ export function suggestSearchTokens(tokens: SearchToken[], query: string, select
   const normalized = query.trim().toLocaleLowerCase();
   if (normalized.length < 2) return [];
   const selectedKeys = new Set(selected.map(token => `${token.type}:${token.value}`));
+  const order: Record<SearchEntityType, number> = { service: 0, namespace: 1, component: 2, cluster: 3 };
   return tokens.filter(token => !selectedKeys.has(`${token.type}:${token.value}`)
-    && (includes(token.label, normalized) || includes(token.value, normalized)));
+    && (includes(token.label, normalized) || includes(token.value, normalized)))
+    .map((token, index) => ({ token, index }))
+    .sort((left, right) => order[left.token.type] - order[right.token.type] || left.index - right.index)
+    .map(({ token }) => token);
 }
 
 export function componentMatchesTokens(
