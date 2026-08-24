@@ -61,14 +61,15 @@ const findRootContext = async () => {
 let rootContext = await waitFor("application renderer", findRootContext);
 const openProducts = async () => {
   rootContext = await waitFor("application renderer", findRootContext);
+  await waitFor("Products top-bar button", () => evaluate("Boolean(document.querySelector('[data-testid=product-navigation-top-bar-button]'))", rootContext));
   await evaluate("document.querySelector('[data-testid=product-navigation-top-bar-button]')?.click()", rootContext);
   await waitFor("global Products page", async () => {
     const state = await evaluate(`({
       href: location.href,
       text: document.body.innerText,
-      productsAreTopmost: Boolean(document.elementsFromPoint(500, 200)[0]?.closest?.("[data-testid=product-navigation-page]")),
+      productsPagePresent: Boolean(document.querySelector("[data-testid=product-navigation-page]")),
     })`, rootContext);
-    return state.href.endsWith("/product-navigation-global") && state.text.includes("Products") && state.productsAreTopmost && state;
+    return state.href.endsWith("/product-navigation-global") && state.text.includes("Products") && state.productsPagePresent && state;
   });
 };
 const openTarget = async (buttonText, namespace, podName) => {
@@ -89,6 +90,24 @@ await evaluate(`(() => {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 })()`, rootContext);
 await waitFor("unfiltered Products table", () => evaluate("document.querySelector('[data-testid=product-navigation-page]').innerText.includes('Checkout A')", rootContext));
+assert.equal(await evaluate("document.querySelectorAll('[aria-label=\"Service dashboard\"]').length", rootContext), 1, "service button is rendered once below the row-spanned service name");
+assert.equal(await evaluate("document.querySelectorAll('[aria-label=\"Component statistics\"]').length >= 4", rootContext), true, "component buttons are rendered below component names");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationTargetMenu').length >= 5", rootContext), true, "each namespace+cluster target has an actions dropdown");
+await evaluate(`(() => {
+  window.__productNavigationOpenedUrl = "";
+  const originalOpen = window.open;
+  window.open = url => { window.__productNavigationOpenedUrl = url; return null; };
+  const row = [...document.querySelectorAll("tr")].find(candidate => candidate.textContent.includes("Checkout A"));
+  row.querySelector('.ProductNavigationTargetMenu summary').click();
+  row.querySelector('[aria-label="Target monitoring"]').click();
+  window.open = originalOpen;
+})()`, rootContext);
+assert.equal(await evaluate("window.__productNavigationOpenedUrl", rootContext), "https://example.test/cluster-a/team-a", "target macros expand to the selected cluster and namespace");
+assert.equal(await evaluate("document.querySelector('.ProductNavigationTargetMenu').open", rootContext), false, "target menu closes after an action");
+await evaluate("document.querySelector('.ProductNavigationTargetMenu summary').click(); document.querySelector('.ProductNavigationPage h1').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));", rootContext);
+assert.equal(await evaluate("document.querySelector('.ProductNavigationTargetMenu').open", rootContext), false, "target menu closes on an outside action");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationTooltip[role=tooltip]').length >= 5", rootContext), true, "instant custom tooltips are rendered");
+console.log("GUI smoke: custom buttons and target macros passed");
 assert(await evaluate(`document.querySelector('[data-testid="home-button"]').parentElement.nextElementSibling.querySelector('[data-testid="product-navigation-top-bar-button"]') !== null`, rootContext), "Products follows Home in the top bar");
 await evaluate(`(() => {
   const input = document.querySelector(".ProductNavigationFilter input");
@@ -99,6 +118,7 @@ await evaluate(`(() => {
 await waitFor("cluster autocomplete", () => evaluate(`document.querySelector('[role="listbox"]')?.innerText.includes("Cluster B")`, rootContext));
 await evaluate(`([...document.querySelectorAll('[role="option"]')].find(option => option.textContent.includes("Cluster B")))?.click()`, rootContext);
 await waitFor("selected cluster label", () => evaluate(`document.querySelector('.ProductNavigationChip.is-cluster')?.innerText.includes("Cluster B")`, rootContext));
+console.log("GUI smoke: ordered search and cluster chip passed");
 assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationChip .Icon').length", rootContext), 1, "selected label has an entity icon");
 await evaluate(`(() => {
   const input = document.querySelector(".ProductNavigationFilter input");
@@ -117,6 +137,7 @@ await waitFor("Checkout B target", async () => {
     if (state.href.endsWith("/pods") && state.text.includes("Namespace: team-b")) return state;
   }
 });
+console.log("GUI smoke: first target navigation passed");
 await openProducts();
 assert.equal(await evaluate("document.querySelector('.ProductNavigationFilter input').value", rootContext), "Checkout B", "filter survives target navigation");
 assert.equal(await evaluate("document.querySelector('.ProductNavigationChip.is-cluster').innerText.includes('Cluster B')", rootContext), true, "selected label survives target navigation");

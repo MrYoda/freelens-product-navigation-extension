@@ -76,8 +76,8 @@ resolved against either the catalog entity ID or its name.
 Each block can optionally be refreshed from a local path, a `file://` URL, or
 an `http://`/`https://` URL. The source must return the block value itself: an
 array for `clusters`, `products`, and `services`, or an object containing the
-`services` map for `hidden`. Automatic refresh can run every hour, six hours,
-day (the default), or week. Freelens checks every five minutes and refreshes a
+`services` map for `hidden`. Automatic refresh is disabled (`Never`) by
+default, or can run every hour, six hours, day, or week. Freelens checks every five minutes and refreshes a
 block when at least that interval has elapsed since its last attempt. Attempt
 time and success/error information are persisted and displayed beside the
 block. **Update now** uses the same validation and status path even when
@@ -156,7 +156,7 @@ for two independent clusters, each with two namespaces and mock Pods:
 Start it with a disposable kubeconfig path:
 
 ```sh
-pnpm mock:kubernetes -- /tmp/product-navigation-kubeconfig
+pnpm mock:kubernetes /tmp/product-navigation-kubeconfig
 ```
 
 Put `scripts/gui/product-navigation.json` into the extension preference store,
@@ -175,6 +175,7 @@ The settings smoke test edits the actual Preferences textarea and presses
 **Apply**. Restart Freelens and run it again with only
 `EXPECT_PRODUCT_NAME="Commerce persisted"` to verify disk persistence and UI
 rehydration across application launches.
+
 
 ## Architecture
 

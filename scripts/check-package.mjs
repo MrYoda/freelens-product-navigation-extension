@@ -50,8 +50,9 @@ for (const field of ["main", "renderer"]) {
     },
   };
   globalThis.Mobx = { action: Symbol("action"), makeObservable: () => undefined, observable: Symbol("observable") };
-  globalThis.React = {};
+  globalThis.React = { forwardRef: render => render, useCallback: value => value, useImperativeHandle: () => undefined, useRef: value => ({ current: value }), useState: value => [value, () => undefined] };
   globalThis.ReactJsxRuntime = { Fragment: Symbol("Fragment"), jsx: () => ({}), jsxs: () => ({}) };
+  globalThis.Element ??= class {};
   globalThis.document ??= { getElementById: () => ({}) };
 
   const exported = createRequire(import.meta.url)(fileURLToPath(entryPoint));
@@ -82,6 +83,7 @@ for (const field of ["main", "renderer"]) {
       throw new Error(`${manifest[field]} must register Product navigation preferences`);
     }
   }
+  await extension.onDeactivate?.();
 }
 
 console.log(`Package ${manifest.name}@${manifest.version} has main and renderer entry points and no runtime dependencies.`);

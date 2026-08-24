@@ -24,13 +24,27 @@
 .ProductNavigationNamespaceTarget + .ProductNavigationNamespaceTarget { margin-top: 12px; }
 .ProductNavigationNamespace { font-family: monospace; margin-bottom: 6px; }
 .ProductNavigationTarget { font-weight: 600; }
+.ProductNavigationCustomButtons { display: flex; gap: 6px; margin-top: 7px; }
+.ProductNavigationCustomButton { align-items: center; background: rgba(127, 127, 127, .12); border: 1px solid var(--border-color); border-radius: 4px; color: inherit; cursor: pointer; display: inline-flex; height: 28px; justify-content: center; padding: 3px 7px; }
+.ProductNavigationCustomButton:hover { background: rgba(127, 127, 127, .24); }
+.ProductNavigationTooltipHost { position: relative; }
+.ProductNavigationTooltip { background: rgba(25, 25, 25, .96); border-radius: 4px; bottom: calc(100% + 6px); color: white; font-size: 12px; left: 50%; opacity: 0; padding: 5px 8px; pointer-events: none; position: absolute; transform: translateX(-50%); transition: opacity .08s; visibility: hidden; white-space: nowrap; z-index: 20; }
+.ProductNavigationTooltipHost:hover .ProductNavigationTooltip, .ProductNavigationTooltipHost:focus-within .ProductNavigationTooltip { opacity: 1; visibility: visible; }
+.ProductNavigationTargetGroup { display: inline-flex; position: relative; }
+.ProductNavigationTargetGroup.has-actions .ProductNavigationTarget { border-radius: 4px 0 0 4px; }
+.ProductNavigationTargetMenu summary { align-items: center; background: var(--colorInfo, #3282b8); border-left: 1px solid rgba(255,255,255,.3); border-radius: 0 4px 4px 0; color: #fff; cursor: pointer; display: flex; height: 100%; list-style: none; padding: 0 7px; }
+.ProductNavigationTargetMenu > div { background: var(--mainBackground, #fff); border: 1px solid var(--border-color); border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,.25); padding: 7px; position: absolute; right: 0; top: calc(100% + 3px); z-index: 5; }
+.ProductNavigationTargetMenu .ProductNavigationCustomButtons { margin: 0; }
 .ProductNavigationPage tr.is-hidden { opacity: .55; text-decoration: line-through; }
 .ProductNavigationErrors { color: var(--colorError); }
 .ProductNavigationPreferences { min-width: 620px; }
-.ProductNavigationPreferences textarea { box-sizing: border-box; font-family: monospace; min-height: 360px; width: 100%; }
+.ProductNavigationPreferences input, .ProductNavigationPreferences select, .ProductNavigationPreferences textarea { background: var(--inputControlBackground, rgba(127,127,127,.08)); border: 1px solid var(--border-color, #aaa); border-radius: 4px; box-sizing: border-box; color: inherit; min-height: 34px; outline: none; padding: 7px 9px; }
+.ProductNavigationPreferences input:focus, .ProductNavigationPreferences select:focus, .ProductNavigationPreferences textarea:focus { border-color: var(--colorInfo, #3282b8); box-shadow: 0 0 0 1px var(--colorInfo, #3282b8); }
+.ProductNavigationJsonEditor { background: var(--inputControlBackground, rgba(127,127,127,.08)); border: 1px solid var(--border-color, #aaa); border-radius: 4px; font-family: monospace; max-height: 420px; min-height: 150px; overflow: auto; }
+.ProductNavigationJsonEditor textarea { border: 0 !important; box-shadow: none !important; outline: 0 !important; }
+.token.property { color: #4f9bd8; } .token.string { color: #3a9d5d; } .token.number, .token.boolean, .token.null { color: #b06fd3; } .token.punctuation { opacity: .8; }
 .ProductNavigationConfigBlock { border: 1px solid var(--border-color); border-radius: 5px; margin-top: 16px; padding: 14px; }
 .ProductNavigationConfigBlock h3 { margin: 0 0 10px; }
-.ProductNavigationConfigBlock textarea { min-height: 150px; }
 .ProductNavigationUpdateInterval { background: rgba(127, 127, 127, .08); border-radius: 5px; padding: 12px 14px; }
 .ProductNavigationUpdateInterval select { margin-left: 8px; }
 .ProductNavigationUpdateInterval p { margin-bottom: 0; opacity: .75; }
@@ -42,3 +56,29 @@
 .ProductNavigationUpdateStatus.is-error { color: var(--colorError, #d13b3b); }
 .ProductNavigationActions { margin-top: 8px; }
 .ProductNavigationPreview { margin-top: 16px; }
+.ProductNavigationPrimaryActions { align-items: center; display: flex; gap: 12px; margin-bottom: 14px; }
+.ProductNavigationButton { background: rgba(127,127,127,.12); border: 1px solid var(--border-color); border-radius: 4px; color: inherit; cursor: pointer; padding: 7px 12px; }
+.ProductNavigationButton:hover:not(:disabled) { background: rgba(127,127,127,.24); }
+.ProductNavigationButton.is-primary { background: var(--colorInfo, #3282b8); border-color: var(--colorInfo, #3282b8); color: white; font-weight: 600; }
+.ProductNavigationButton:disabled { cursor: not-allowed; opacity: .45; }
+.ProductNavigationTabs { border-bottom: 1px solid var(--border-color); display: flex; gap: 4px; }
+.ProductNavigationTabs button { background: transparent; border: 0; border-bottom: 3px solid transparent; color: inherit; cursor: pointer; padding: 10px 14px; }
+.ProductNavigationTabs button.is-active { border-bottom-color: var(--colorInfo, #3282b8); font-weight: 700; }
+.ProductNavigationSettingsPanel { padding-top: 16px; }
+.ProductNavigationButtonEditor { align-items: end; border: 1px solid var(--border-color); border-radius: 5px; display: grid; gap: 10px; grid-template-columns: repeat(4, minmax(100px, 1fr)); margin: 14px 0; padding: 12px; }
+.ProductNavigationButtonEditor label { display: flex; flex-direction: column; gap: 4px; }
+.ProductNavigationButtonEditor input, .ProductNavigationButtonEditor select, .ProductNavigationButtonEditor textarea { width: 100%; }
+.ProductNavigationButtonUrl { grid-column: 1 / span 3; }
+.ProductNavigationIconPreview { align-self: center; font-size: 24px; }
+.ProductNavigationIconPicker { display: flex; flex-direction: column; gap: 4px; position: relative; }
+.ProductNavigationIconPickerButton { align-items: center; background: var(--inputControlBackground, rgba(127,127,127,.08)); border: 1px solid var(--border-color, #aaa); border-radius: 4px; color: inherit; cursor: pointer; display: flex; gap: 8px; min-height: 34px; padding: 5px 8px; }
+.ProductNavigationIconPickerButton span { flex: 1; overflow: hidden; text-align: left; text-overflow: ellipsis; }
+.ProductNavigationIconGrid { background: var(--mainBackground, #fff); border: 1px solid var(--border-color); border-radius: 5px; box-shadow: 0 6px 18px rgba(0,0,0,.25); display: grid; gap: 4px; grid-template-columns: repeat(4, 38px); left: 0; max-height: 260px; overflow-y: auto; padding: 8px; position: absolute; top: calc(100% + 4px); z-index: 30; }
+.ProductNavigationIconGrid button { background: transparent; border: 1px solid transparent; border-radius: 4px; color: inherit; cursor: pointer; height: 36px; }
+.ProductNavigationIconGrid button:hover, .ProductNavigationIconGrid button[aria-selected="true"] { background: rgba(127,127,127,.18); border-color: var(--colorInfo, #3282b8); }
+.ProductNavigationSwitch { align-items: center; cursor: pointer; display: inline-flex !important; flex-direction: row !important; gap: 8px; }
+.ProductNavigationSwitch input { height: 0; margin: 0; min-height: 0; opacity: 0; position: absolute; width: 0; }
+.ProductNavigationSwitch > span { background: rgba(127,127,127,.35); border-radius: 12px; height: 20px; position: relative; transition: background .15s; width: 36px; }
+.ProductNavigationSwitch > span::after { background: white; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,.35); content: ""; height: 16px; left: 2px; position: absolute; top: 2px; transition: transform .15s; width: 16px; }
+.ProductNavigationSwitch input:checked + span { background: var(--colorInfo, #3282b8); }
+.ProductNavigationSwitch input:checked + span::after { transform: translateX(16px); }
