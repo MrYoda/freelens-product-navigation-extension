@@ -9,6 +9,9 @@ import {
 import type { ProductNavigationStore } from "../common/store";
 
 const CHECK_INTERVAL = 5 * 60 * 1_000;
+// Diagnostic default: honor the resolved system route without silently bypassing it.
+// Change only this flag to true to restore the tested direct retry workaround.
+const ENABLE_DIRECT_PROXY_FALLBACK = false;
 
 type FetchUpdateSource = (url: string) => Promise<Response>;
 
@@ -47,7 +50,9 @@ export const fetchWithProxyFallback = async (
 
 const electronFetch: FetchUpdateSource = async url => {
   const fetchers = await getElectronFetchers();
-  return fetchWithProxyFallback(url, fetchers.system, fetchers.direct);
+  return ENABLE_DIRECT_PROXY_FALLBACK
+    ? fetchWithProxyFallback(url, fetchers.system, fetchers.direct)
+    : fetchers.system(url);
 };
 
 export const formatUpdateError = (error: unknown): string => {
