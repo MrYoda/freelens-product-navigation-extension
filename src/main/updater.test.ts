@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import test from "node:test";
 import { defaultConfig, normalizeConfig } from "../common/products.ts";
 import type { ProductNavigationStore } from "../common/store.ts";
-import { fetchWithProxyFallback, formatUpdatedFrom, formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
+import { fetchWithProxyFallback, formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
 
 test("reads update JSON from local paths, file URLs, and HTTP URLs", async () => {
   const path = `/tmp/product-navigation-update-${process.pid}.json`;
@@ -42,14 +42,6 @@ test("does not bypass the system route for certificate or HTTP errors", async ()
     async () => { directCalls += 1; return new Response("[]"); },
   ), /ERR_CERT_AUTHORITY_INVALID/);
   assert.equal(directCalls, 0);
-});
-
-test("includes proxy routes in a successful HTTP update status", () => {
-  assert.equal(formatUpdatedFrom(
-    "https://updates.example.test/services.json",
-    'Proxy routes: Freelens default session="PROXY stale-proxy.example.test:8080"; isolated system session="DIRECT"',
-  ), 'Updated from https://updates.example.test/services.json; Proxy routes: Freelens default session="PROXY stale-proxy.example.test:8080"; isolated system session="DIRECT"');
-  assert.equal(formatUpdatedFrom("/tmp/services.json"), "Updated from /tmp/services.json");
 });
 
 test("applies a valid block and records success or failure without changing other blocks", async () => {

@@ -87,17 +87,9 @@ entered in that block's field. HTTP(S) downloads use Electron's Chromium network
 stack, including its system proxy and certificate handling, rather than Node's
 separate `fetch` trust configuration. Downloads use an isolated Electron session
 so Freelens' application-session proxy rewriting cannot turn a system `DIRECT`
-route into a broken fixed proxy. The tested direct retry for
-`ERR_PROXY_CONNECTION_FAILED` remains available behind the source-level
-`ENABLE_DIRECT_PROXY_FALLBACK` switch, but is disabled by default while proxy
-routing is diagnosed; TLS certificate validation is never weakened.
-Failed HTTP(S) attempts include the routes resolved independently by Freelens'
-default session and by the updater's isolated system session. This distinguishes
-an application-session rewrite from a system PAC/WPAD or proxy decision without
-logging response data or credentials.
-During diagnosis the same routes are also appended to successful per-block status
-and written to the main-process console, so the two session decisions can be
-compared even when the isolated session completes the download.
+route into a broken fixed proxy. If the system route explicitly fails with
+`ERR_PROXY_CONNECTION_FAILED`, the updater retries directly without weakening
+TLS certificate validation.
 
 Automatic update failures show one red built-in Freelens notification containing
 the source and error for every failed block (enabled by default). Successful
