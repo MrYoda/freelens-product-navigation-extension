@@ -100,9 +100,6 @@ if (updateProductsPath) {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(updateProductsPath)});
     input.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
-  await waitFor("enabled Apply for update source", () => evaluate(`!([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
-  await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply")).click()`);
-  await waitFor("saved update source", () => evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
   await waitFor("Products Update now button", () => evaluate(`Boolean([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now" && !button.disabled))`));
   await evaluate(`([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now")).click()`);
   await waitFor("successful Products update", () => evaluate(`(() => {

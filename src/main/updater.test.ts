@@ -1,22 +1,26 @@
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
 import test from "node:test";
 import { defaultConfig, normalizeConfig } from "../common/products.ts";
 import type { ProductNavigationStore } from "../common/store.ts";
-import { ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
+import { formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
 
 test("reads update JSON from local paths, file URLs, and HTTP URLs", async () => {
   const path = `/tmp/product-navigation-update-${process.pid}.json`;
   await writeFile(path, '[{"id":"local","name":"Local"}]');
   assert.match(await readUpdateSource(path), /Local/);
   assert.match(await readUpdateSource(new URL(`file://${path}`).href), /Local/);
-  const server = createServer((_request, response) => response.end('[{"id":"remote","name":"Remote"}]'));
-  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address();
-  assert(address && typeof address !== "string");
-  assert.match(await readUpdateSource(`http://127.0.0.1:${address.port}/clusters.json`), /Remote/);
-  await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  let requestedUrl = "";
+  assert.match(await readUpdateSource("https://updates.example.test/clusters.json", async url => {
+    requestedUrl = url;
+    return new Response('[{"id":"remote","name":"Remote"}]');
+  }), /Remote/);
+  assert.equal(requestedUrl, "https://updates.example.test/clusters.json");
+});
+
+test("includes nested network error details", () => {
+  const cause = Object.assign(new Error("self-signed certificate in certificate chain"), { code: "SELF_SIGNED_CERT_IN_CHAIN" });
+  assert.equal(formatUpdateError(new Error("fetch failed", { cause })), "fetch failed: self-signed certificate in certificate chain (SELF_SIGNED_CERT_IN_CHAIN)");
 });
 
 test("applies a valid block and records success or failure without changing other blocks", async () => {
@@ -40,4 +44,44 @@ test("applies a valid block and records success or failure without changing othe
   await updater.updateBlock("clusters");
   assert.equal(delivered.updates.blocks.clusters.lastStatus?.success, false);
   assert.match(delivered.updates.blocks.clusters.lastStatus?.message ?? "", /ENOENT/);
+});
+
+test("manual updates use and persist the source passed by the settings form", async () => {
+  const path = `/tmp/product-navigation-manual-${process.pid}.json`;
+  await writeFile(path, '[{"id":"manual","name":"Manual"}]');
+  const navigation = normalizeConfig(defaultConfig);
+  let storedNavigation = navigation;
+  const fakeStore = {
+    loaded: true,
+    get navigation() { return storedNavigation; },
+    setNavigation(value: typeof navigation) { storedNavigation = value; },
+  } as unknown as ProductNavigationStore;
+  const updater = new ProductNavigationUpdater(fakeStore, () => undefined);
+  const result = await updater.updateBlock("clusters", `  ${path}  `);
+  assert.equal(result.success, true);
+  assert.equal(storedNavigation.updates.blocks.clusters.url, path);
+  assert.equal(storedNavigation.clusters[0].name, "Manual");
+});
+
+test("automatic update reports every failed file and the successful changes once", async () => {
+  const path = `/tmp/product-navigation-automatic-${process.pid}.json`;
+  await writeFile(path, '[{"id":"new-cluster","name":"New Cluster"}]');
+  const navigation = normalizeConfig(defaultConfig);
+  navigation.updates.interval = "hour";
+  navigation.updates.blocks.clusters = { enabled: true, url: path };
+  navigation.updates.blocks.products = { enabled: true, url: "/missing/products.json" };
+  let storedNavigation = navigation;
+  const fakeStore = {
+    loaded: true,
+    get navigation() { return storedNavigation; },
+    setNavigation(value: typeof navigation) { storedNavigation = value; },
+  } as unknown as ProductNavigationStore;
+  let report: Parameters<NonNullable<ConstructorParameters<typeof ProductNavigationUpdater>[2]>>[0] | undefined;
+  const updater = new ProductNavigationUpdater(fakeStore, () => undefined, value => { report = value; });
+  await updater.updateDueBlocks();
+  assert.equal(report?.failures.length, 1);
+  assert.equal(report?.failures[0].block, "products");
+  assert.equal(report?.failures[0].source, "/missing/products.json");
+  assert.match(report?.failures[0].message ?? "", /ENOENT/);
+  assert.deepEqual(report?.changes.clusters, { added: 1, removed: 0 });
 });

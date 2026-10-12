@@ -18,7 +18,8 @@ the original Freelens fork into an independently installable extension.
 - separate validated JSON editors for clusters, products, services, and hidden
   components in **Preferences → Extensions → Product navigation**;
 - optional scheduled updates of each JSON block from an HTTPS URL, `file://`
-  URL, or local path, with per-block status and manual refresh.
+  URL, or local path, with per-block status, manual refresh, and configurable
+  success/failure notifications.
 
 The global page and cross-frame hand-off use Freelens extension points:
 `globalPages`, `topBarItems`, Catalog entities, extension IPC, `namespaceStore`,
@@ -81,7 +82,16 @@ default, or can run every hour, six hours, day, or week. Freelens checks every f
 block when at least that interval has elapsed since its last attempt. Attempt
 time and success/error information are persisted and displayed beside the
 block. **Update now** uses the same validation and status path even when
-automatic refresh is disabled.
+automatic refresh is disabled, and immediately uses and saves the URL currently
+entered in that block's field. HTTP(S) downloads use Electron's Chromium network
+stack, including its system proxy and certificate handling, rather than Node's
+separate `fetch` trust configuration.
+
+Automatic update failures show one red built-in Freelens notification containing
+the source and error for every failed block (enabled by default). Successful
+cycles can optionally show a green notification with added/removed cluster,
+service, and component counts (disabled by default). Both choices are available
+under **Automatic updates**.
 
 Updates are applied in dependency order (`clusters`, `products`, `services`,
 then `hidden`) and each candidate is validated against the currently stored
@@ -105,7 +115,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `mryoda-freelens-product-navigation-extension-0.3.1.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.4.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
