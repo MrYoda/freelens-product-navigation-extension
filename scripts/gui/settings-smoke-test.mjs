@@ -100,12 +100,17 @@ if (updateProductsPath) {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(updateProductsPath)});
     input.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
+  await waitFor("enabled Apply for update source", () => evaluate(`!([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
+  await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply")).click()`);
+  await waitFor("saved update source", () => evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
   await waitFor("Products Update now button", () => evaluate(`Boolean([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now" && !button.disabled))`));
   await evaluate(`([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now")).click()`);
-  const updatedProductsJson = await waitFor("successful Products update", () => evaluate(`(() => {
+  await waitFor("successful Products update", () => evaluate(`(() => {
     const status = document.querySelector('[data-block="products"] .ProductNavigationUpdateStatus.is-success');
-    return status && status.textContent !== ${JSON.stringify(previousStatus)} && document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea').value;
+    return status && status.textContent !== ${JSON.stringify(previousStatus)};
   })()`));
+  await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Configuration JSON'))).click()`);
+  const updatedProductsJson = await waitFor("updated Products JSON editor", () => evaluate(`document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea')?.value`));
   const updatedProducts = JSON.parse(updatedProductsJson);
   if (expectedUpdatedName) assert.equal(updatedProducts[0]?.name, expectedUpdatedName, "manual Products update did not reach the editor");
   console.log(`Settings GUI smoke test updated Products from ${updateProductsPath}`);
