@@ -7,6 +7,7 @@ import {
   type ProductNavigationAutomaticUpdateReport, type ProductNavigationUpdateFailure,
 } from "../common/updates.ts";
 import type { ProductNavigationStore } from "../common/store";
+import { getProxyRouteDiagnostics } from "./network-diagnostics.ts";
 
 const CHECK_INTERVAL = 5 * 60 * 1_000;
 // Diagnostic default: honor the resolved system route without silently bypassing it.
@@ -15,7 +16,13 @@ const ENABLE_DIRECT_PROXY_FALLBACK = false;
 
 type FetchUpdateSource = (url: string) => Promise<Response>;
 
-let electronFetchers: Promise<{ system: FetchUpdateSource; direct: FetchUpdateSource }> | undefined;
+interface ElectronFetchers {
+  system: FetchUpdateSource;
+  direct: FetchUpdateSource;
+  diagnostics: (url: string) => Promise<string>;
+}
+
+let electronFetchers: Promise<ElectronFetchers> | undefined;
 
 const getElectronFetchers = () => electronFetchers ??= import("electron").then(async ({ session }) => {
   // Freelens 1.10.3 rewrites defaultSession proxy settings by feeding the PAC-style
@@ -27,6 +34,10 @@ const getElectronFetchers = () => electronFetchers ??= import("electron").then(a
   return {
     system: url => systemSession.fetch(url),
     direct: url => directSession.fetch(url),
+    diagnostics: url => getProxyRouteDiagnostics(
+      () => session.defaultSession.resolveProxy(url),
+      () => systemSession.resolveProxy(url),
+    ),
   };
 });
 
@@ -50,9 +61,13 @@ export const fetchWithProxyFallback = async (
 
 const electronFetch: FetchUpdateSource = async url => {
   const fetchers = await getElectronFetchers();
-  return ENABLE_DIRECT_PROXY_FALLBACK
-    ? fetchWithProxyFallback(url, fetchers.system, fetchers.direct)
-    : fetchers.system(url);
+  try {
+    return await (ENABLE_DIRECT_PROXY_FALLBACK
+      ? fetchWithProxyFallback(url, fetchers.system, fetchers.direct)
+      : fetchers.system(url));
+  } catch (error) {
+    throw new Error(await fetchers.diagnostics(url), { cause: error });
+  }
 };
 
 export const formatUpdateError = (error: unknown): string => {

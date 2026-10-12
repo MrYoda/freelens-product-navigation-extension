@@ -91,6 +91,10 @@ route into a broken fixed proxy. The tested direct retry for
 `ERR_PROXY_CONNECTION_FAILED` remains available behind the source-level
 `ENABLE_DIRECT_PROXY_FALLBACK` switch, but is disabled by default while proxy
 routing is diagnosed; TLS certificate validation is never weakened.
+Failed HTTP(S) attempts include the routes resolved independently by Freelens'
+default session and by the updater's isolated system session. This distinguishes
+an application-session rewrite from a system PAC/WPAD or proxy decision without
+logging response data or credentials.
 
 Automatic update failures show one red built-in Freelens notification containing
 the source and error for every failed block (enabled by default). Successful
