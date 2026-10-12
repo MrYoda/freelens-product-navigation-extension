@@ -55,7 +55,11 @@ export const Preferences = () => {
   // structuredClone cannot clone proxies, while the persisted model is JSON by definition.
   const [draft, setDraft] = React.useState<ProductNavigationPreferences>(() => copyPreferences(store.navigation));
   const [json, setJson] = React.useState<Record<ProductNavigationBlock, string>>(() => Object.fromEntries(productNavigationBlocks.map(block => [block, JSON.stringify(store.navigation[block], null, 2)])) as Record<ProductNavigationBlock, string>);
-  React.useEffect(() => subscribeToConfigurationUpdates(() => { setDraft(copyPreferences(store.navigation)); render(value => value + 1); }), []);
+  React.useEffect(() => subscribeToConfigurationUpdates(() => {
+    setDraft(copyPreferences(store.navigation));
+    setJson(Object.fromEntries(productNavigationBlocks.map(block => [block, JSON.stringify(store.navigation[block], null, 2)])) as Record<ProductNavigationBlock, string>);
+    render(value => value + 1);
+  }), []);
   if (!store.loaded) return <p>Loading product navigation settings…</p>;
 
   let validation: ReturnType<typeof parseConfig> = { errors: [] };
