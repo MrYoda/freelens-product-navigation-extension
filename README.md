@@ -85,7 +85,11 @@ block. **Update now** uses the same validation and status path even when
 automatic refresh is disabled, and immediately uses and saves the URL currently
 entered in that block's field. HTTP(S) downloads use Electron's Chromium network
 stack, including its system proxy and certificate handling, rather than Node's
-separate `fetch` trust configuration.
+separate `fetch` trust configuration. Downloads use an isolated Electron session
+so Freelens' application-session proxy rewriting cannot turn a system `DIRECT`
+route into a broken fixed proxy. If the system route explicitly fails with
+`ERR_PROXY_CONNECTION_FAILED`, the updater retries directly without weakening
+TLS certificate validation.
 
 Automatic update failures show one red built-in Freelens notification containing
 the source and error for every failed block (enabled by default). Successful

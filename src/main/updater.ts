@@ -12,9 +12,42 @@ const CHECK_INTERVAL = 5 * 60 * 1_000;
 
 type FetchUpdateSource = (url: string) => Promise<Response>;
 
+let electronFetchers: Promise<{ system: FetchUpdateSource; direct: FetchUpdateSource }> | undefined;
+
+const getElectronFetchers = () => electronFetchers ??= import("electron").then(async ({ session }) => {
+  // Freelens 1.10.3 rewrites defaultSession proxy settings by feeding the PAC-style
+  // result of resolveProxy() into fixed-server proxyRules. Keep extension downloads
+  // isolated from that global session so DIRECT is not interpreted as a proxy host.
+  const systemSession = session.fromPartition("product-navigation-update-system");
+  const directSession = session.fromPartition("product-navigation-update-direct");
+  await Promise.all([systemSession.setProxy({ mode: "system" }), directSession.setProxy({ mode: "direct" })]);
+  return {
+    system: url => systemSession.fetch(url),
+    direct: url => directSession.fetch(url),
+  };
+});
+
+export const fetchWithProxyFallback = async (
+  url: string,
+  systemFetch: FetchUpdateSource,
+  directFetch: FetchUpdateSource,
+): Promise<Response> => {
+  try {
+    return await systemFetch(url);
+  } catch (error) {
+    const message = formatUpdateError(error);
+    if (!message.includes("ERR_PROXY_CONNECTION_FAILED")) throw error;
+    try {
+      return await directFetch(url);
+    } catch (directError) {
+      throw new Error(`${message}; direct connection fallback failed`, { cause: directError });
+    }
+  }
+};
+
 const electronFetch: FetchUpdateSource = async url => {
-  const { net } = await import("electron");
-  return net.fetch(url);
+  const fetchers = await getElectronFetchers();
+  return fetchWithProxyFallback(url, fetchers.system, fetchers.direct);
 };
 
 export const formatUpdateError = (error: unknown): string => {

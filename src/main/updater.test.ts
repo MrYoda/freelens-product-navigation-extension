@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import test from "node:test";
 import { defaultConfig, normalizeConfig } from "../common/products.ts";
 import type { ProductNavigationStore } from "../common/store.ts";
-import { formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
+import { fetchWithProxyFallback, formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
 
 test("reads update JSON from local paths, file URLs, and HTTP URLs", async () => {
   const path = `/tmp/product-navigation-update-${process.pid}.json`;
@@ -21,6 +21,27 @@ test("reads update JSON from local paths, file URLs, and HTTP URLs", async () =>
 test("includes nested network error details", () => {
   const cause = Object.assign(new Error("self-signed certificate in certificate chain"), { code: "SELF_SIGNED_CERT_IN_CHAIN" });
   assert.equal(formatUpdateError(new Error("fetch failed", { cause })), "fetch failed: self-signed certificate in certificate chain (SELF_SIGNED_CERT_IN_CHAIN)");
+});
+
+test("retries a broken system proxy directly without disabling TLS validation", async () => {
+  let directCalls = 0;
+  const response = await fetchWithProxyFallback(
+    "https://updates.example.test/services.json",
+    async () => { throw new Error("net::ERR_PROXY_CONNECTION_FAILED"); },
+    async () => { directCalls += 1; return new Response("[]"); },
+  );
+  assert.equal(await response.text(), "[]");
+  assert.equal(directCalls, 1);
+});
+
+test("does not bypass the system route for certificate or HTTP errors", async () => {
+  let directCalls = 0;
+  await assert.rejects(() => fetchWithProxyFallback(
+    "https://updates.example.test/services.json",
+    async () => { throw new Error("net::ERR_CERT_AUTHORITY_INVALID"); },
+    async () => { directCalls += 1; return new Response("[]"); },
+  ), /ERR_CERT_AUTHORITY_INVALID/);
+  assert.equal(directCalls, 0);
 });
 
 test("applies a valid block and records success or failure without changing other blocks", async () => {
