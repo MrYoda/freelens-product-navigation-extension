@@ -15,6 +15,8 @@ const CHECK_INTERVAL = 5 * 60 * 1_000;
 const ENABLE_DIRECT_PROXY_FALLBACK = false;
 
 type FetchUpdateSource = (url: string) => Promise<Response>;
+interface UpdateFetchResult { response: Response; diagnostics: string }
+interface UpdateSourceResult { content: string; diagnostics?: string }
 
 interface ElectronFetchers {
   system: FetchUpdateSource;
@@ -59,14 +61,17 @@ export const fetchWithProxyFallback = async (
   }
 };
 
-const electronFetch: FetchUpdateSource = async url => {
+const electronFetch = async (url: string): Promise<UpdateFetchResult> => {
   const fetchers = await getElectronFetchers();
+  const diagnostics = await fetchers.diagnostics(url);
+  console.info(`[Product Navigation] ${diagnostics}`);
   try {
-    return await (ENABLE_DIRECT_PROXY_FALLBACK
+    const response = await (ENABLE_DIRECT_PROXY_FALLBACK
       ? fetchWithProxyFallback(url, fetchers.system, fetchers.direct)
       : fetchers.system(url));
+    return { response, diagnostics };
   } catch (error) {
-    throw new Error(await fetchers.diagnostics(url), { cause: error });
+    throw new Error(diagnostics, { cause: error });
   }
 };
 
@@ -88,15 +93,26 @@ export const formatUpdateError = (error: unknown): string => {
   return [...new Set(parts)].join(": ") || "Unknown update error";
 };
 
-export const readUpdateSource = async (source: string, fetchSource: FetchUpdateSource = electronFetch): Promise<string> => {
+const readUpdateSourceResult = async (source: string, fetchSource?: FetchUpdateSource): Promise<UpdateSourceResult> => {
   const trimmed = source.trim();
   if (/^https?:\/\//i.test(trimmed)) {
-    const response = await fetchSource(trimmed);
-    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
-    return response.text();
+    const fetched = fetchSource
+      ? { response: await fetchSource(trimmed), diagnostics: undefined }
+      : await electronFetch(trimmed);
+    const { response } = fetched;
+    if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}${fetched.diagnostics ? `; ${fetched.diagnostics}` : ""}`);
+    return { content: await response.text(), diagnostics: fetched.diagnostics };
   }
-  return readFile(trimmed.startsWith("file:") ? fileURLToPath(trimmed) : trimmed, "utf8");
+  return { content: await readFile(trimmed.startsWith("file:") ? fileURLToPath(trimmed) : trimmed, "utf8") };
 };
+
+export const readUpdateSource = async (source: string, fetchSource?: FetchUpdateSource): Promise<string> => (
+  await readUpdateSourceResult(source, fetchSource)
+).content;
+
+export const formatUpdatedFrom = (source: string, diagnostics?: string) => (
+  `Updated from ${source}${diagnostics ? `; ${diagnostics}` : ""}`
+);
 
 const statusNavigation = (
   navigation: ProductNavigationPreferences,
@@ -172,10 +188,10 @@ export class ProductNavigationUpdater {
       const current = this.store.navigation;
       const source = requestedSource ?? current.updates.blocks[block].url;
       if (!source.trim()) throw new Error("No update URL or local path configured");
-      const json = await readUpdateSource(source);
-      const parsed = parseConfigBlock(block, json, current);
-      if (!parsed.value) throw new Error(parsed.errors.join("; "));
-      const message = `Updated from ${source}`;
+      const loaded = await readUpdateSourceResult(source);
+      const parsed = parseConfigBlock(block, loaded.content, current);
+      if (!parsed.value) throw new Error(`${parsed.errors.join("; ")}${loaded.diagnostics ? `; ${loaded.diagnostics}` : ""}`);
+      const message = formatUpdatedFrom(source, loaded.diagnostics);
       const next = statusNavigation(parsed.value, block, true, message, requestedSource?.trim());
       this.store.setNavigation(next);
       this.onChange(next);

@@ -95,6 +95,9 @@ Failed HTTP(S) attempts include the routes resolved independently by Freelens'
 default session and by the updater's isolated system session. This distinguishes
 an application-session rewrite from a system PAC/WPAD or proxy decision without
 logging response data or credentials.
+During diagnosis the same routes are also appended to successful per-block status
+and written to the main-process console, so the two session decisions can be
+compared even when the isolated session completes the download.
 
 Automatic update failures show one red built-in Freelens notification containing
 the source and error for every failed block (enabled by default). Successful
