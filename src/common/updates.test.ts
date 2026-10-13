@@ -70,12 +70,18 @@ test("formats built-in success and multi-file failure notifications", () => {
     success: true,
     message: "Automatic update completed: clusters +2/-1, services +3/-0, components +4/-2",
   });
+  const noChanges = {
+    clusters: { added: 0, removed: 0 },
+    services: { added: 0, removed: 0 },
+    components: { added: 0, removed: 0 },
+  };
+  assert.equal(getAutomaticUpdateNotification({ failures: [], changes: noChanges, notifications: { failures: true, successes: true } }), undefined);
   const failed = getAutomaticUpdateNotification({
     failures: [
       { block: "products", source: "https://example.test/products.json", message: "HTTP 503 Service Unavailable" },
       { block: "services", source: "/missing/services.json", message: "ENOENT" },
     ],
-    changes,
+    changes: noChanges,
     notifications: { failures: true, successes: true },
   });
   assert.equal(failed?.success, false);

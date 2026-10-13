@@ -95,7 +95,7 @@ TLS certificate validation.
 Automatic update failures show one red built-in Freelens notification containing
 the source and error for every failed block (enabled by default). Successful
 cycles can optionally show a green notification with added/removed cluster,
-service, and component counts (disabled by default). Both choices are available
+service, and component counts only when something changed (disabled by default). Both choices are available
 under **Automatic updates**.
 
 Automatic updates are atomic: all enabled sources must download successfully,

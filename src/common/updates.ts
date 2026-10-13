@@ -66,6 +66,8 @@ export const getAutomaticUpdateNotification = (
   }
   if (!report.notifications.successes) return undefined;
   const { clusters, services, components } = report.changes;
+  const changed = [clusters, services, components].some(({ added, removed }) => added > 0 || removed > 0);
+  if (!changed) return undefined;
   return {
     success: true,
     message: `Automatic update completed: clusters +${clusters.added}/-${clusters.removed}, services +${services.added}/-${services.removed}, components +${components.added}/-${components.removed}`,
