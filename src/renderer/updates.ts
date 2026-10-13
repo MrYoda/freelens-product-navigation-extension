@@ -1,5 +1,6 @@
 import { Renderer } from "@freelensapp/extensions";
-import type { ProductNavigationBlock, ProductNavigationPreferences } from "../common/products";
+import type { ProductNavigationPreferences, ProductNavigationUpdates } from "../common/products";
+import { getAutomaticUpdateNotification, type ProductNavigationAutomaticUpdateReport } from "../common/updates";
 import { getProductNavigationStore } from "../common/store";
 
 let ipc: Renderer.Ipc | undefined;
@@ -11,9 +12,17 @@ export const activateUpdates = (extension: Renderer.LensExtension) => {
     getProductNavigationStore().setNavigation(navigation);
     listeners.forEach(listener => listener());
   });
+  ipc.listen("automatic-update:delivery", (_event: unknown, report: ProductNavigationAutomaticUpdateReport) => {
+    // IPC is delivered to both the application renderer and cluster frames.
+    // The application renderer owns notifications; showing them in every frame duplicates the toast.
+    if (location.hostname.endsWith(".renderer.freelens.app")) return;
+    const notification = getAutomaticUpdateNotification(report);
+    if (notification?.success) Renderer.Component.Notifications.ok(notification.message);
+    else if (notification) Renderer.Component.Notifications.error(notification.message);
+  });
 };
 
-export const requestBlockUpdate = (block: ProductNavigationBlock) => ipc?.broadcast("update-block:request", block);
+export const requestEnabledUpdate = (updates: ProductNavigationUpdates) => ipc?.broadcast("update-enabled:request", updates);
 export const subscribeToConfigurationUpdates = (listener: () => void) => {
   listeners.add(listener);
   return () => { listeners.delete(listener); };

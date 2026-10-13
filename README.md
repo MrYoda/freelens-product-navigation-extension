@@ -18,7 +18,8 @@ the original Freelens fork into an independently installable extension.
 - separate validated JSON editors for clusters, products, services, and hidden
   components in **Preferences → Extensions → Product navigation**;
 - optional scheduled updates of each JSON block from an HTTPS URL, `file://`
-  URL, or local path, with per-block status and manual refresh.
+  URL, or local path, with per-block status, manual refresh, and configurable
+  success/failure notifications.
 
 The global page and cross-frame hand-off use Freelens extension points:
 `globalPages`, `topBarItems`, Catalog entities, extension IPC, `namespaceStore`,
@@ -77,15 +78,30 @@ Each block can optionally be refreshed from a local path, a `file://` URL, or
 an `http://`/`https://` URL. The source must return the block value itself: an
 array for `clusters`, `products`, and `services`, or an object containing the
 `services` map for `hidden`. Automatic refresh is disabled (`Never`) by
-default, or can run every hour, six hours, day, or week. Freelens checks every five minutes and refreshes a
-block when at least that interval has elapsed since its last attempt. Attempt
+default, or can run every 10 minutes, hour, six hours, day, or week. Freelens checks every minute. When the
+selected interval has elapsed for any enabled source, all enabled sources are
+downloaded and validated together as one configuration transaction. Attempt
 time and success/error information are persisted and displayed beside the
-block. **Update now** uses the same validation and status path even when
-automatic refresh is disabled.
+block. The single **Update now** button runs the same transaction for all enabled
+sources even when scheduled refresh is disabled, and immediately uses and saves
+the update settings currently entered in the form. HTTP(S) downloads use Electron's Chromium network
+stack, including its system proxy and certificate handling, rather than Node's
+separate `fetch` trust configuration. Downloads use an isolated Electron session
+so Freelens' application-session proxy rewriting cannot turn a system `DIRECT`
+route into a broken fixed proxy. If the system route explicitly fails with
+`ERR_PROXY_CONNECTION_FAILED`, the updater retries directly without weakening
+TLS certificate validation.
 
-Updates are applied in dependency order (`clusters`, `products`, `services`,
-then `hidden`) and each candidate is validated against the currently stored
-other blocks. Invalid or unreachable content never replaces a valid block.
+Automatic update failures show one red built-in Freelens notification containing
+the source and error for every failed block (enabled by default). Successful
+cycles can optionally show a green notification with added/removed cluster,
+service, and component counts only when something changed (disabled by default). Both choices are available
+under **Automatic updates**.
+
+Automatic updates are atomic: all enabled sources must download successfully,
+and their combined candidate must pass cross-reference validation. Otherwise no
+configuration block is replaced. **Update now** follows the same atomic behavior
+without waiting for the selected interval.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
@@ -105,7 +121,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `mryoda-freelens-product-navigation-extension-0.3.1.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.4.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than

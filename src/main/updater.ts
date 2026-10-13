@@ -1,16 +1,77 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import type { ProductNavigationBlock, ProductNavigationPreferences } from "../common/products.ts";
-import { parseConfigBlock } from "../common/products.ts";
-import { productNavigationBlocks, shouldUpdateBlock } from "../common/updates.ts";
+import type { ProductNavigationBlock, ProductNavigationPreferences, ProductNavigationUpdates } from "../common/products.ts";
+import { copyPreferences, parseConfig } from "../common/products.ts";
+import {
+  productNavigationBlocks, shouldUpdateBlock, summarizeNavigationChanges,
+  type ProductNavigationAutomaticUpdateReport, type ProductNavigationUpdateFailure,
+} from "../common/updates.ts";
 import type { ProductNavigationStore } from "../common/store";
 
-const CHECK_INTERVAL = 5 * 60 * 1_000;
+export const UPDATE_CHECK_INTERVAL = 60 * 1_000;
 
-export const readUpdateSource = async (source: string): Promise<string> => {
+type FetchUpdateSource = (url: string) => Promise<Response>;
+
+let electronFetchers: Promise<{ system: FetchUpdateSource; direct: FetchUpdateSource }> | undefined;
+
+const getElectronFetchers = () => electronFetchers ??= import("electron").then(async ({ session }) => {
+  // Freelens 1.10.3 rewrites defaultSession proxy settings by feeding the PAC-style
+  // result of resolveProxy() into fixed-server proxyRules. Keep extension downloads
+  // isolated from that global session so DIRECT is not interpreted as a proxy host.
+  const systemSession = session.fromPartition("product-navigation-update-system");
+  const directSession = session.fromPartition("product-navigation-update-direct");
+  await Promise.all([systemSession.setProxy({ mode: "system" }), directSession.setProxy({ mode: "direct" })]);
+  return {
+    system: url => systemSession.fetch(url),
+    direct: url => directSession.fetch(url),
+  };
+});
+
+export const fetchWithProxyFallback = async (
+  url: string,
+  systemFetch: FetchUpdateSource,
+  directFetch: FetchUpdateSource,
+): Promise<Response> => {
+  try {
+    return await systemFetch(url);
+  } catch (error) {
+    const message = formatUpdateError(error);
+    if (!message.includes("ERR_PROXY_CONNECTION_FAILED")) throw error;
+    try {
+      return await directFetch(url);
+    } catch (directError) {
+      throw new Error(`${message}; direct connection fallback failed`, { cause: directError });
+    }
+  }
+};
+
+const electronFetch: FetchUpdateSource = async url => {
+  const fetchers = await getElectronFetchers();
+  return fetchWithProxyFallback(url, fetchers.system, fetchers.direct);
+};
+
+export const formatUpdateError = (error: unknown): string => {
+  const parts: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (current instanceof Error) {
+      const code = "code" in current && typeof current.code === "string" ? ` (${current.code})` : "";
+      if (current.message) parts.push(`${current.message}${code}`);
+      current = current.cause;
+    } else {
+      parts.push(String(current));
+      break;
+    }
+  }
+  return [...new Set(parts)].join(": ") || "Unknown update error";
+};
+
+export const readUpdateSource = async (source: string, fetchSource: FetchUpdateSource = electronFetch): Promise<string> => {
   const trimmed = source.trim();
   if (/^https?:\/\//i.test(trimmed)) {
-    const response = await fetch(trimmed);
+    const response = await fetchSource(trimmed);
     if (!response.ok) throw new Error(`HTTP ${response.status} ${response.statusText}`);
     return response.text();
   }
@@ -22,6 +83,7 @@ const statusNavigation = (
   block: ProductNavigationBlock,
   success: boolean,
   message: string,
+  attemptedAt = new Date().toISOString(),
 ): ProductNavigationPreferences => ({
   ...navigation,
   updates: {
@@ -30,7 +92,7 @@ const statusNavigation = (
       ...navigation.updates.blocks,
       [block]: {
         ...navigation.updates.blocks[block],
-        lastStatus: { attemptedAt: new Date().toISOString(), success, message },
+        lastStatus: { attemptedAt, success, message },
       },
     },
   },
@@ -38,17 +100,20 @@ const statusNavigation = (
 
 export class ProductNavigationUpdater {
   private timer?: ReturnType<typeof setInterval>;
+  private updatingDue = false;
   private running = new Set<ProductNavigationBlock>();
   private readonly store: ProductNavigationStore;
   private readonly onChange: (navigation: ProductNavigationPreferences) => void;
+  private readonly onAutomaticUpdate: (report: ProductNavigationAutomaticUpdateReport) => void;
 
   constructor(
     store: ProductNavigationStore,
     onChange: (navigation: ProductNavigationPreferences) => void,
-  ) { this.store = store; this.onChange = onChange; }
+    onAutomaticUpdate: (report: ProductNavigationAutomaticUpdateReport) => void = () => undefined,
+  ) { this.store = store; this.onChange = onChange; this.onAutomaticUpdate = onAutomaticUpdate; }
 
   start(): void {
-    this.timer = setInterval(() => void this.updateDueBlocks(), CHECK_INTERVAL);
+    this.timer = setInterval(() => void this.updateDueBlocks(), UPDATE_CHECK_INTERVAL);
     this.timer.unref?.();
     void this.updateDueBlocks();
     setTimeout(() => void this.updateDueBlocks(), 1_000).unref?.();
@@ -57,31 +122,67 @@ export class ProductNavigationUpdater {
   stop(): void { if (this.timer) clearInterval(this.timer); }
 
   async updateDueBlocks(): Promise<void> {
-    if (!this.store.loaded) return;
-    for (const block of productNavigationBlocks) {
-      if (shouldUpdateBlock(this.store.navigation, block)) await this.updateBlock(block);
-    }
+    await this.updateEnabledBlocks(false);
   }
 
-  async updateBlock(block: ProductNavigationBlock): Promise<void> {
-    if (this.running.has(block)) return;
-    this.running.add(block);
+  async updateNow(updates?: ProductNavigationUpdates): Promise<void> {
+    await this.updateEnabledBlocks(true, updates);
+  }
+
+  private async updateEnabledBlocks(force: boolean, requestedUpdates?: ProductNavigationUpdates): Promise<void> {
+    if (!this.store.loaded || this.updatingDue) return;
+    const stored = copyPreferences(this.store.navigation);
+    const current = requestedUpdates ? { ...stored, updates: requestedUpdates } : stored;
+    const enabled = productNavigationBlocks.filter(block => current.updates.blocks[block].enabled);
+    if (enabled.length === 0 || (!force && !enabled.some(block => shouldUpdateBlock(current, block))) || enabled.some(block => this.running.has(block))) return;
+    this.updatingDue = true;
+    enabled.forEach(block => this.running.add(block));
+    const before = current;
+    const attemptedAt = new Date().toISOString();
     try {
-      const current = this.store.navigation;
-      const source = current.updates.blocks[block].url;
-      if (!source.trim()) throw new Error("No update URL or local path configured");
-      const json = await readUpdateSource(source);
-      const parsed = parseConfigBlock(block, json, current);
-      if (!parsed.value) throw new Error(parsed.errors.join("; "));
-      const next = statusNavigation(parsed.value, block, true, `Updated from ${source}`);
+      const loaded = await Promise.all(enabled.map(async block => {
+        const source = before.updates.blocks[block].url;
+        try {
+          if (!source.trim()) throw new Error("No update URL or local path configured");
+          const json = await readUpdateSource(source);
+          return { block, source, value: JSON.parse(json) as unknown };
+        } catch (error) {
+          return { block, source, error: formatUpdateError(error) };
+        }
+      }));
+
+      const sourceFailures = loaded.filter((result): result is typeof result & { error: string } => "error" in result);
+      let validated: ProductNavigationPreferences | undefined;
+      let validationMessage: string | undefined;
+      if (sourceFailures.length === 0) {
+        const candidate: Record<string, unknown> = { ...before };
+        loaded.forEach(result => { candidate[result.block] = result.value; });
+        const parsed = parseConfig(JSON.stringify(candidate));
+        validated = parsed.value;
+        if (!validated) validationMessage = `Combined validation failed: ${parsed.errors.join("; ")}`;
+      }
+
+      const failures: ProductNavigationUpdateFailure[] = [];
+      let next = validated ?? before;
+      for (const result of loaded) {
+        const sourceError = "error" in result ? result.error : undefined;
+        const message = validated
+          ? `Updated from ${result.source}`
+          : sourceError ?? validationMessage ?? `Not applied because another automatic update source failed: ${sourceFailures.map(failure => `${failure.block}: ${failure.error}`).join("; ")}`;
+        next = statusNavigation(next, result.block, Boolean(validated), message, attemptedAt);
+        if (!validated) failures.push({ block: result.block, source: result.source, message });
+      }
+
       this.store.setNavigation(next);
       this.onChange(next);
-    } catch (error) {
-      const next = statusNavigation(this.store.navigation, block, false, error instanceof Error ? error.message : String(error));
-      this.store.setNavigation(next);
-      this.onChange(next);
+      this.onAutomaticUpdate({
+        failures,
+        changes: summarizeNavigationChanges(before, next),
+        notifications: { ...next.updates.notifications },
+      });
     } finally {
-      this.running.delete(block);
+      enabled.forEach(block => this.running.delete(block));
+      this.updatingDue = false;
     }
   }
 }

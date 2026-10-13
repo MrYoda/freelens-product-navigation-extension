@@ -71,7 +71,7 @@ await evaluate("document.querySelector('.ProductNavigationIconPickerButton').cli
 
 await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Automatic updates'))).click()`);
 assert.equal(await waitFor("Never update interval", () => evaluate(`document.querySelector('.ProductNavigationUpdateInterval select')?.value`)), "never");
-assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationUpdateSettings').length"), 0, "per-source settings are hidden for Never");
+assert.equal(await evaluate("document.querySelectorAll('.ProductNavigationUpdateSettings').length"), 4, "per-source settings remain available for Update now");
 
 await evaluate(`([...document.querySelectorAll('.ProductNavigationTabs button')].find(button => button.textContent.includes('Configuration JSON'))).click()`);
 await waitFor("Products JSON after tab navigation", () => evaluate(`document.querySelector('.ProductNavigationJsonEditor[aria-label="Products JSON"] textarea')?.value`));
@@ -96,15 +96,14 @@ if (updateProductsPath) {
   await evaluate(`(() => { const select = document.querySelector('.ProductNavigationUpdateInterval select'); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'hour'); select.dispatchEvent(new Event('change', { bubbles: true })); })()`);
   const previousStatus = await evaluate(`document.querySelector('[data-block="products"] .ProductNavigationUpdateStatus')?.textContent ?? ""`);
   await evaluate(`(() => {
+    const enabled = document.querySelector('[data-block="products"] input[type="checkbox"]');
+    if (!enabled.checked) enabled.click();
     const input = document.querySelector('[data-block="products"] .ProductNavigationUpdateSource input');
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(input, ${JSON.stringify(updateProductsPath)});
     input.dispatchEvent(new Event("input", { bubbles: true }));
   })()`);
-  await waitFor("enabled Apply for update source", () => evaluate(`!([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
-  await evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply")).click()`);
-  await waitFor("saved update source", () => evaluate(`([...document.querySelectorAll("button")].find(button => button.textContent.trim() === "Apply"))?.disabled`));
-  await waitFor("Products Update now button", () => evaluate(`Boolean([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now" && !button.disabled))`));
-  await evaluate(`([...document.querySelectorAll('[data-block="products"] button')].find(button => button.textContent.trim() === "Update now")).click()`);
+  await waitFor("global Update now button", () => evaluate(`Boolean([...document.querySelectorAll('.ProductNavigationUpdateInterval button')].find(button => button.textContent.trim() === "Update now" && !button.disabled))`));
+  await evaluate(`([...document.querySelectorAll('.ProductNavigationUpdateInterval button')].find(button => button.textContent.trim() === "Update now")).click()`);
   await waitFor("successful Products update", () => evaluate(`(() => {
     const status = document.querySelector('[data-block="products"] .ProductNavigationUpdateStatus.is-success');
     return status && status.textContent !== ${JSON.stringify(previousStatus)};

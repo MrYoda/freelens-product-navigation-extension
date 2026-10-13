@@ -9,7 +9,7 @@ export interface ProductNavigationPreferences {
 }
 
 export type ProductNavigationBlock = "clusters" | "products" | "services" | "hidden";
-export type ProductNavigationUpdateInterval = "never" | "hour" | "six-hours" | "day" | "week";
+export type ProductNavigationUpdateInterval = "never" | "ten-minutes" | "hour" | "six-hours" | "day" | "week";
 export interface ProductNavigationUpdateStatus { attemptedAt: string; success: boolean; message: string }
 export interface ProductNavigationBlockUpdate {
   enabled: boolean;
@@ -18,7 +18,12 @@ export interface ProductNavigationBlockUpdate {
 }
 export interface ProductNavigationUpdates {
   interval: ProductNavigationUpdateInterval;
+  notifications: ProductNavigationUpdateNotifications;
   blocks: Record<ProductNavigationBlock, ProductNavigationBlockUpdate>;
+}
+export interface ProductNavigationUpdateNotifications {
+  failures: boolean;
+  successes: boolean;
 }
 
 export interface ProductNavigationCluster { id: string; name: string }
@@ -58,6 +63,7 @@ export const defaultConfig: ProductNavigationPreferences = {
   hidden: { services: {} },
   updates: {
     interval: "never",
+    notifications: { failures: true, successes: false },
     blocks: {
       clusters: { enabled: false, url: "" },
       products: { enabled: false, url: "" },
@@ -93,7 +99,14 @@ export const normalizeConfig = (value?: unknown): ProductNavigationPreferences =
     ...value,
     customButtons,
     openProductsOnStartup: value.openProductsOnStartup === true,
-    updates: { ...value.updates, interval: value.updates.interval ?? "never" },
+    updates: {
+      ...value.updates,
+      interval: value.updates.interval ?? "never",
+      notifications: {
+        failures: value.updates.notifications?.failures !== false,
+        successes: value.updates.notifications?.successes === true,
+      },
+    },
   }) as ProductNavigationPreferences;
 };
 
