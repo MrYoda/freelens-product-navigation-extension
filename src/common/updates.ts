@@ -17,6 +17,7 @@ export const productNavigationBlocks: ProductNavigationBlock[] = ["clusters", "p
 
 export const updateIntervalMilliseconds: Record<ProductNavigationUpdateInterval, number> = {
   never: Number.POSITIVE_INFINITY,
+  "ten-minutes": 10 * 60 * 1_000,
   hour: 60 * 60 * 1_000,
   "six-hours": 6 * 60 * 60 * 1_000,
   day: 24 * 60 * 60 * 1_000,

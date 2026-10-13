@@ -13,7 +13,7 @@ import { requestBlockUpdate, subscribeToConfigurationUpdates } from "./updates";
 import { materialIcons } from "./material-icons";
 
 const blockTitles: Record<ProductNavigationBlock, string> = { clusters: "Clusters", products: "Products", services: "Services and components", hidden: "Hidden components" };
-const intervalLabels: Record<ProductNavigationUpdateInterval, string> = { never: "Never", hour: "Every hour", "six-hours": "Every 6 hours", day: "Every day", week: "Every week" };
+const intervalLabels: Record<ProductNavigationUpdateInterval, string> = { never: "Never", "ten-minutes": "Every 10 minutes", hour: "Every hour", "six-hours": "Every 6 hours", day: "Every day", week: "Every week" };
 const snapshot = (navigation: ProductNavigationPreferences) => JSON.stringify(navigation);
 // Keep the named React exports required by the bundled editor in the Freelens
 // global external facade.

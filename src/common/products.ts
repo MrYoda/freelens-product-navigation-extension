@@ -9,7 +9,7 @@ export interface ProductNavigationPreferences {
 }
 
 export type ProductNavigationBlock = "clusters" | "products" | "services" | "hidden";
-export type ProductNavigationUpdateInterval = "never" | "hour" | "six-hours" | "day" | "week";
+export type ProductNavigationUpdateInterval = "never" | "ten-minutes" | "hour" | "six-hours" | "day" | "week";
 export interface ProductNavigationUpdateStatus { attemptedAt: string; success: boolean; message: string }
 export interface ProductNavigationBlockUpdate {
   enabled: boolean;

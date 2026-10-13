@@ -7,6 +7,7 @@ test("disables automatic updates by default", () => {
   const updates = normalizeConfig().updates;
   assert.equal(updates.interval, "never");
   assert.deepEqual(updates.notifications, { failures: true, successes: false });
+  assert.equal(updateIntervalMilliseconds["ten-minutes"], 10 * 60 * 1_000);
   assert.equal(updateIntervalMilliseconds.day, 24 * 60 * 60 * 1_000);
 });
 

@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type { ProductNavigationBlock, ProductNavigationPreferences } from "../common/products.ts";
-import { copyPreferences, parseConfigBlock } from "../common/products.ts";
+import { copyPreferences, parseConfig, parseConfigBlock } from "../common/products.ts";
 import {
   productNavigationBlocks, shouldUpdateBlock, summarizeNavigationChanges,
   type ProductNavigationAutomaticUpdateReport, type ProductNavigationUpdateFailure,
@@ -84,6 +84,7 @@ const statusNavigation = (
   success: boolean,
   message: string,
   source?: string,
+  attemptedAt = new Date().toISOString(),
 ): ProductNavigationPreferences => ({
   ...navigation,
   updates: {
@@ -93,7 +94,7 @@ const statusNavigation = (
       [block]: {
         ...navigation.updates.blocks[block],
         ...(source === undefined ? {} : { url: source }),
-        lastStatus: { attemptedAt: new Date().toISOString(), success, message },
+        lastStatus: { attemptedAt, success, message },
       },
     },
   },
@@ -124,23 +125,56 @@ export class ProductNavigationUpdater {
 
   async updateDueBlocks(): Promise<void> {
     if (!this.store.loaded || this.updatingDue) return;
-    const due = productNavigationBlocks.filter(block => !this.running.has(block) && shouldUpdateBlock(this.store.navigation, block));
-    if (due.length === 0) return;
+    const current = this.store.navigation;
+    const enabled = productNavigationBlocks.filter(block => current.updates.blocks[block].enabled);
+    if (!enabled.some(block => shouldUpdateBlock(current, block)) || enabled.some(block => this.running.has(block))) return;
     this.updatingDue = true;
-    const before = copyPreferences(this.store.navigation);
-    const failures: ProductNavigationUpdateFailure[] = [];
+    enabled.forEach(block => this.running.add(block));
+    const before = copyPreferences(current);
+    const attemptedAt = new Date().toISOString();
     try {
-      for (const block of due) {
-        const source = this.store.navigation.updates.blocks[block].url;
-        const result = await this.updateBlock(block);
-        if (!result.success) failures.push({ block, source, message: result.message });
+      const loaded = await Promise.all(enabled.map(async block => {
+        const source = before.updates.blocks[block].url;
+        try {
+          if (!source.trim()) throw new Error("No update URL or local path configured");
+          const json = await readUpdateSource(source);
+          return { block, source, value: JSON.parse(json) as unknown };
+        } catch (error) {
+          return { block, source, error: formatUpdateError(error) };
+        }
+      }));
+
+      const sourceFailures = loaded.filter((result): result is typeof result & { error: string } => "error" in result);
+      let validated: ProductNavigationPreferences | undefined;
+      let validationMessage: string | undefined;
+      if (sourceFailures.length === 0) {
+        const candidate: Record<string, unknown> = { ...before };
+        loaded.forEach(result => { candidate[result.block] = result.value; });
+        const parsed = parseConfig(JSON.stringify(candidate));
+        validated = parsed.value;
+        if (!validated) validationMessage = `Combined validation failed: ${parsed.errors.join("; ")}`;
       }
+
+      const failures: ProductNavigationUpdateFailure[] = [];
+      let next = validated ?? before;
+      for (const result of loaded) {
+        const sourceError = "error" in result ? result.error : undefined;
+        const message = validated
+          ? `Updated from ${result.source}`
+          : sourceError ?? validationMessage ?? `Not applied because another automatic update source failed: ${sourceFailures.map(failure => `${failure.block}: ${failure.error}`).join("; ")}`;
+        next = statusNavigation(next, result.block, Boolean(validated), message, undefined, attemptedAt);
+        if (!validated) failures.push({ block: result.block, source: result.source, message });
+      }
+
+      this.store.setNavigation(next);
+      this.onChange(next);
       this.onAutomaticUpdate({
         failures,
-        changes: summarizeNavigationChanges(before, this.store.navigation),
-        notifications: { ...this.store.navigation.updates.notifications },
+        changes: summarizeNavigationChanges(before, next),
+        notifications: { ...next.updates.notifications },
       });
     } finally {
+      enabled.forEach(block => this.running.delete(block));
       this.updatingDue = false;
     }
   }

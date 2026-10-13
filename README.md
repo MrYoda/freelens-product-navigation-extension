@@ -78,8 +78,9 @@ Each block can optionally be refreshed from a local path, a `file://` URL, or
 an `http://`/`https://` URL. The source must return the block value itself: an
 array for `clusters`, `products`, and `services`, or an object containing the
 `services` map for `hidden`. Automatic refresh is disabled (`Never`) by
-default, or can run every hour, six hours, day, or week. Freelens checks every five minutes and refreshes a
-block when at least that interval has elapsed since its last attempt. Attempt
+default, or can run every 10 minutes, hour, six hours, day, or week. Freelens checks every five minutes. When the
+selected interval has elapsed for any enabled source, all enabled sources are
+downloaded and validated together as one configuration transaction. Attempt
 time and success/error information are persisted and displayed beside the
 block. **Update now** uses the same validation and status path even when
 automatic refresh is disabled, and immediately uses and saves the URL currently
@@ -97,9 +98,10 @@ cycles can optionally show a green notification with added/removed cluster,
 service, and component counts (disabled by default). Both choices are available
 under **Automatic updates**.
 
-Updates are applied in dependency order (`clusters`, `products`, `services`,
-then `hidden`) and each candidate is validated against the currently stored
-other blocks. Invalid or unreachable content never replaces a valid block.
+Automatic updates are atomic: all enabled sources must download successfully,
+and their combined candidate must pass cross-reference validation. Otherwise no
+configuration block is replaced. Manual **Update now** actions still validate a
+single candidate against the currently stored other blocks.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
@@ -119,7 +121,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `mryoda-freelens-product-navigation-extension-0.3.4.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.5.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than
