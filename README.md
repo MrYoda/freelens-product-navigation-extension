@@ -78,13 +78,13 @@ Each block can optionally be refreshed from a local path, a `file://` URL, or
 an `http://`/`https://` URL. The source must return the block value itself: an
 array for `clusters`, `products`, and `services`, or an object containing the
 `services` map for `hidden`. Automatic refresh is disabled (`Never`) by
-default, or can run every 10 minutes, hour, six hours, day, or week. Freelens checks every five minutes. When the
+default, or can run every 10 minutes, hour, six hours, day, or week. Freelens checks every minute. When the
 selected interval has elapsed for any enabled source, all enabled sources are
 downloaded and validated together as one configuration transaction. Attempt
 time and success/error information are persisted and displayed beside the
-block. **Update now** uses the same validation and status path even when
-automatic refresh is disabled, and immediately uses and saves the URL currently
-entered in that block's field. HTTP(S) downloads use Electron's Chromium network
+block. The single **Update now** button runs the same transaction for all enabled
+sources even when scheduled refresh is disabled, and immediately uses and saves
+the update settings currently entered in the form. HTTP(S) downloads use Electron's Chromium network
 stack, including its system proxy and certificate handling, rather than Node's
 separate `fetch` trust configuration. Downloads use an isolated Electron session
 so Freelens' application-session proxy rewriting cannot turn a system `DIRECT`
@@ -100,8 +100,8 @@ under **Automatic updates**.
 
 Automatic updates are atomic: all enabled sources must download successfully,
 and their combined candidate must pass cross-reference validation. Otherwise no
-configuration block is replaced. Manual **Update now** actions still validate a
-single candidate against the currently stored other blocks.
+configuration block is replaced. **Update now** follows the same atomic behavior
+without waiting for the selected interval.
 
 `id` and `name` are required on clusters, products, services, and components.
 `productId` is optional. Every referenced product, cluster, service, and hidden
@@ -121,7 +121,7 @@ pnpm typecheck
 pnpm pack:extension
 ```
 
-Install `mryoda-freelens-product-navigation-extension-0.3.5.tgz` from the Freelens
+Install `mryoda-freelens-product-navigation-extension-0.3.4.tgz` from the Freelens
 **Extensions** screen. The package contains self-contained CommonJS main and
 renderer entries and has no runtime npm dependencies, so installation does not
 need registry access. Freelens validates its engine field more narrowly than

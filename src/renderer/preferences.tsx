@@ -9,7 +9,7 @@ import {
   type ProductNavigationCustomButton, type ProductNavigationPreferences, type ProductNavigationUpdateInterval,
 } from "../common/products";
 import { productNavigationBlocks } from "../common/updates";
-import { requestBlockUpdate, subscribeToConfigurationUpdates } from "./updates";
+import { requestEnabledUpdate, subscribeToConfigurationUpdates } from "./updates";
 import { materialIcons } from "./material-icons";
 
 const blockTitles: Record<ProductNavigationBlock, string> = { clusters: "Clusters", products: "Products", services: "Services and components", hidden: "Hidden components" };
@@ -68,6 +68,8 @@ export const Preferences = () => {
     validation = parseConfig(JSON.stringify({ ...draft, ...blocks }));
   } catch (error) { validation = { errors: [error instanceof Error ? error.message : "Invalid JSON"] }; }
   const buttonsValid = draft.customButtons.every(button => button.icon.trim() && button.url.trim());
+  const enabledUpdateBlocks = productNavigationBlocks.filter(block => draft.updates.blocks[block].enabled);
+  const canUpdateNow = enabledUpdateBlocks.length > 0 && enabledUpdateBlocks.every(block => draft.updates.blocks[block].url.trim());
   const changed = snapshot(draft) !== snapshot(store.navigation) || productNavigationBlocks.some(block => json[block] !== JSON.stringify(store.navigation[block], null, 2));
   const apply = () => { if (validation.value && buttonsValid) { const value = { ...validation.value, customButtons: draft.customButtons, openProductsOnStartup: draft.openProductsOnStartup, updates: draft.updates }; store.setNavigation(value); setDraft(copyPreferences(value)); render(value => value + 1); } };
 
@@ -87,11 +89,11 @@ export const Preferences = () => {
     {tab === "updates" && <div className="ProductNavigationSettingsPanel"><div className="ProductNavigationUpdateInterval"><label>Automatic update interval <select value={draft.updates.interval} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, interval: event.currentTarget.value as ProductNavigationUpdateInterval } })}>{Object.entries(intervalLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       <div className="ProductNavigationNotificationSettings"><label className="ProductNavigationSwitch"><input type="checkbox" checked={draft.updates.notifications.failures} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, notifications: { ...draft.updates.notifications, failures: event.currentTarget.checked } } })} /><span /> Show a notification when an automatic update fails</label>
         <label className="ProductNavigationSwitch"><input type="checkbox" checked={draft.updates.notifications.successes} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, notifications: { ...draft.updates.notifications, successes: event.currentTarget.checked } } })} /><span /> Show a notification after successful automatic updates</label></div>
-      {draft.updates.interval === "never" && <p>Automatic updates are disabled. Manual updates remain available below.</p>}</div>
+      <div className="ProductNavigationActions"><button className="ProductNavigationButton" disabled={!canUpdateNow} onClick={() => requestEnabledUpdate(draft.updates)}>Update now</button></div>
+      {draft.updates.interval === "never" && <p>Scheduled updates are disabled. Update now remains available for enabled sources.</p>}</div>
       {productNavigationBlocks.map(block => { const settings = draft.updates.blocks[block]; return <section className="ProductNavigationConfigBlock" data-block={block} key={block}><h3>{blockTitles[block]}</h3><div className="ProductNavigationUpdateSettings">
         <label className="ProductNavigationSwitch"><input type="checkbox" checked={settings.enabled} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, blocks: { ...draft.updates.blocks, [block]: { ...settings, enabled: event.currentTarget.checked } } } })} /><span /> Update automatically</label>
-        <label className="ProductNavigationUpdateSource">Update URL or local file<input value={settings.url} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, blocks: { ...draft.updates.blocks, [block]: { ...settings, url: event.currentTarget.value } } } })} /></label>
-        <button className="ProductNavigationButton" disabled={!settings.url.trim()} onClick={() => requestBlockUpdate(block, settings.url)}>Update now</button></div>
+        <label className="ProductNavigationUpdateSource">Update URL or local file<input value={settings.url} onChange={event => setDraft({ ...draft, updates: { ...draft.updates, blocks: { ...draft.updates.blocks, [block]: { ...settings, url: event.currentTarget.value } } } })} /></label></div>
         {settings.lastStatus && <p className={`ProductNavigationUpdateStatus ${settings.lastStatus.success ? "is-success" : "is-error"}`}>Last attempt: {new Date(settings.lastStatus.attemptedAt).toLocaleString()} — {settings.lastStatus.success ? "Success" : "Failed"}: {settings.lastStatus.message}</p>}</section>; })}</div>}
     {tab === "buttons" && <div className="ProductNavigationSettingsPanel"><label className="ProductNavigationSwitch"><input type="checkbox" checked={draft.openProductsOnStartup} onChange={event => setDraft({ ...draft, openProductsOnStartup: event.currentTarget.checked })} /><span /> Open Products when Freelens starts</label>
       {draft.customButtons.map((button, index) => <ButtonEditor key={button.id} button={button} onChange={value => setDraft({ ...draft, customButtons: draft.customButtons.map((candidate, i) => i === index ? value : candidate) })} onRemove={() => setDraft({ ...draft, customButtons: draft.customButtons.filter((_, i) => i !== index) })} />)}

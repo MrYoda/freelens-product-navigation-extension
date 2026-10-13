@@ -1,6 +1,6 @@
 import { Main } from "@freelensapp/extensions";
 import { getProductNavigationStore } from "../common/store";
-import type { ProductNavigationBlock } from "../common/products";
+import type { ProductNavigationUpdates } from "../common/products";
 import { ProductNavigationUpdater } from "./updater";
 
 const channels = ["target", "ready", "applied"] as const;
@@ -20,11 +20,7 @@ export default class ProductNavigationMainExtension extends Main.LensExtension {
       navigation => ipc.broadcast("configuration:delivery", navigation),
       report => ipc.broadcast("automatic-update:delivery", report),
     );
-    ipc.listen("update-block:request", (_event: unknown, request: { block?: ProductNavigationBlock; source?: string } | ProductNavigationBlock) => {
-      const block = typeof request === "string" ? request : request?.block;
-      const source = typeof request === "object" && typeof request?.source === "string" ? request.source : undefined;
-      if (block && ["clusters", "products", "services", "hidden"].includes(block)) void this.updater?.updateBlock(block, source);
-    });
+    ipc.listen("update-enabled:request", (_event: unknown, updates: ProductNavigationUpdates) => void this.updater?.updateNow(updates));
     this.updater.start();
   }
 

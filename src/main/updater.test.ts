@@ -3,7 +3,11 @@ import { writeFile } from "node:fs/promises";
 import test from "node:test";
 import { defaultConfig, normalizeConfig } from "../common/products.ts";
 import type { ProductNavigationStore } from "../common/store.ts";
-import { fetchWithProxyFallback, formatUpdateError, ProductNavigationUpdater, readUpdateSource } from "./updater.ts";
+import { fetchWithProxyFallback, formatUpdateError, ProductNavigationUpdater, readUpdateSource, UPDATE_CHECK_INTERVAL } from "./updater.ts";
+
+test("checks scheduled updates every minute", () => {
+  assert.equal(UPDATE_CHECK_INTERVAL, 60 * 1_000);
+});
 
 test("reads update JSON from local paths, file URLs, and HTTP URLs", async () => {
   const path = `/tmp/product-navigation-update-${process.pid}.json`;
@@ -44,30 +48,7 @@ test("does not bypass the system route for certificate or HTTP errors", async ()
   assert.equal(directCalls, 0);
 });
 
-test("applies a valid block and records success or failure without changing other blocks", async () => {
-  const path = `/tmp/product-navigation-clusters-${process.pid}.json`;
-  await writeFile(path, '[{"id":"new-cluster","name":"New Cluster"}]');
-  const navigation = normalizeConfig({ ...defaultConfig, products: [{ id: "product", name: "Product" }] });
-  navigation.updates.blocks.clusters = { enabled: true, url: path };
-  let storedNavigation = navigation;
-  const fakeStore = {
-    loaded: true,
-    get navigation() { return storedNavigation; },
-    setNavigation(value: typeof navigation) { storedNavigation = value; },
-  } as unknown as ProductNavigationStore;
-  let delivered = navigation;
-  const updater = new ProductNavigationUpdater(fakeStore, value => { delivered = value; });
-  await updater.updateBlock("clusters");
-  assert.equal(delivered.clusters[0].name, "New Cluster");
-  assert.deepEqual(delivered.products, navigation.products);
-  assert.equal(delivered.updates.blocks.clusters.lastStatus?.success, true);
-  delivered.updates.blocks.clusters.url = "/missing/product-navigation.json";
-  await updater.updateBlock("clusters");
-  assert.equal(delivered.updates.blocks.clusters.lastStatus?.success, false);
-  assert.match(delivered.updates.blocks.clusters.lastStatus?.message ?? "", /ENOENT/);
-});
-
-test("manual updates use and persist the source passed by the settings form", async () => {
+test("Update now forces the same enabled-source transaction and persists current form settings", async () => {
   const path = `/tmp/product-navigation-manual-${process.pid}.json`;
   await writeFile(path, '[{"id":"manual","name":"Manual"}]');
   const navigation = normalizeConfig(defaultConfig);
@@ -78,9 +59,13 @@ test("manual updates use and persist the source passed by the settings form", as
     setNavigation(value: typeof navigation) { storedNavigation = value; },
   } as unknown as ProductNavigationStore;
   const updater = new ProductNavigationUpdater(fakeStore, () => undefined);
-  const result = await updater.updateBlock("clusters", `  ${path}  `);
-  assert.equal(result.success, true);
+  const requestedUpdates = structuredClone(navigation.updates);
+  requestedUpdates.blocks.clusters = { enabled: true, url: path };
+  await updater.updateNow(requestedUpdates);
+  assert.equal(storedNavigation.updates.interval, "never");
+  assert.equal(storedNavigation.updates.blocks.clusters.enabled, true);
   assert.equal(storedNavigation.updates.blocks.clusters.url, path);
+  assert.equal(storedNavigation.updates.blocks.clusters.lastStatus?.success, true);
   assert.equal(storedNavigation.clusters[0].name, "Manual");
 });
 

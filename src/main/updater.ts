@@ -1,14 +1,14 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import type { ProductNavigationBlock, ProductNavigationPreferences } from "../common/products.ts";
-import { copyPreferences, parseConfig, parseConfigBlock } from "../common/products.ts";
+import type { ProductNavigationBlock, ProductNavigationPreferences, ProductNavigationUpdates } from "../common/products.ts";
+import { copyPreferences, parseConfig } from "../common/products.ts";
 import {
   productNavigationBlocks, shouldUpdateBlock, summarizeNavigationChanges,
   type ProductNavigationAutomaticUpdateReport, type ProductNavigationUpdateFailure,
 } from "../common/updates.ts";
 import type { ProductNavigationStore } from "../common/store";
 
-const CHECK_INTERVAL = 5 * 60 * 1_000;
+export const UPDATE_CHECK_INTERVAL = 60 * 1_000;
 
 type FetchUpdateSource = (url: string) => Promise<Response>;
 
@@ -83,7 +83,6 @@ const statusNavigation = (
   block: ProductNavigationBlock,
   success: boolean,
   message: string,
-  source?: string,
   attemptedAt = new Date().toISOString(),
 ): ProductNavigationPreferences => ({
   ...navigation,
@@ -93,7 +92,6 @@ const statusNavigation = (
       ...navigation.updates.blocks,
       [block]: {
         ...navigation.updates.blocks[block],
-        ...(source === undefined ? {} : { url: source }),
         lastStatus: { attemptedAt, success, message },
       },
     },
@@ -115,7 +113,7 @@ export class ProductNavigationUpdater {
   ) { this.store = store; this.onChange = onChange; this.onAutomaticUpdate = onAutomaticUpdate; }
 
   start(): void {
-    this.timer = setInterval(() => void this.updateDueBlocks(), CHECK_INTERVAL);
+    this.timer = setInterval(() => void this.updateDueBlocks(), UPDATE_CHECK_INTERVAL);
     this.timer.unref?.();
     void this.updateDueBlocks();
     setTimeout(() => void this.updateDueBlocks(), 1_000).unref?.();
@@ -124,13 +122,22 @@ export class ProductNavigationUpdater {
   stop(): void { if (this.timer) clearInterval(this.timer); }
 
   async updateDueBlocks(): Promise<void> {
+    await this.updateEnabledBlocks(false);
+  }
+
+  async updateNow(updates?: ProductNavigationUpdates): Promise<void> {
+    await this.updateEnabledBlocks(true, updates);
+  }
+
+  private async updateEnabledBlocks(force: boolean, requestedUpdates?: ProductNavigationUpdates): Promise<void> {
     if (!this.store.loaded || this.updatingDue) return;
-    const current = this.store.navigation;
+    const stored = copyPreferences(this.store.navigation);
+    const current = requestedUpdates ? { ...stored, updates: requestedUpdates } : stored;
     const enabled = productNavigationBlocks.filter(block => current.updates.blocks[block].enabled);
-    if (!enabled.some(block => shouldUpdateBlock(current, block)) || enabled.some(block => this.running.has(block))) return;
+    if (enabled.length === 0 || (!force && !enabled.some(block => shouldUpdateBlock(current, block))) || enabled.some(block => this.running.has(block))) return;
     this.updatingDue = true;
     enabled.forEach(block => this.running.add(block));
-    const before = copyPreferences(current);
+    const before = current;
     const attemptedAt = new Date().toISOString();
     try {
       const loaded = await Promise.all(enabled.map(async block => {
@@ -162,7 +169,7 @@ export class ProductNavigationUpdater {
         const message = validated
           ? `Updated from ${result.source}`
           : sourceError ?? validationMessage ?? `Not applied because another automatic update source failed: ${sourceFailures.map(failure => `${failure.block}: ${failure.error}`).join("; ")}`;
-        next = statusNavigation(next, result.block, Boolean(validated), message, undefined, attemptedAt);
+        next = statusNavigation(next, result.block, Boolean(validated), message, attemptedAt);
         if (!validated) failures.push({ block: result.block, source: result.source, message });
       }
 
@@ -176,32 +183,6 @@ export class ProductNavigationUpdater {
     } finally {
       enabled.forEach(block => this.running.delete(block));
       this.updatingDue = false;
-    }
-  }
-
-  async updateBlock(block: ProductNavigationBlock, requestedSource?: string): Promise<{ success: boolean; message: string }> {
-    if (this.running.has(block)) return { success: false, message: "Update already in progress" };
-    this.running.add(block);
-    try {
-      const current = this.store.navigation;
-      const source = requestedSource ?? current.updates.blocks[block].url;
-      if (!source.trim()) throw new Error("No update URL or local path configured");
-      const json = await readUpdateSource(source);
-      const parsed = parseConfigBlock(block, json, current);
-      if (!parsed.value) throw new Error(parsed.errors.join("; "));
-      const message = `Updated from ${source}`;
-      const next = statusNavigation(parsed.value, block, true, message, requestedSource?.trim());
-      this.store.setNavigation(next);
-      this.onChange(next);
-      return { success: true, message };
-    } catch (error) {
-      const message = formatUpdateError(error);
-      const next = statusNavigation(this.store.navigation, block, false, message, requestedSource?.trim());
-      this.store.setNavigation(next);
-      this.onChange(next);
-      return { success: false, message };
-    } finally {
-      this.running.delete(block);
     }
   }
 }

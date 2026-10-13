@@ -1,5 +1,5 @@
 import { Renderer } from "@freelensapp/extensions";
-import type { ProductNavigationBlock, ProductNavigationPreferences } from "../common/products";
+import type { ProductNavigationPreferences, ProductNavigationUpdates } from "../common/products";
 import { getAutomaticUpdateNotification, type ProductNavigationAutomaticUpdateReport } from "../common/updates";
 import { getProductNavigationStore } from "../common/store";
 
@@ -22,7 +22,7 @@ export const activateUpdates = (extension: Renderer.LensExtension) => {
   });
 };
 
-export const requestBlockUpdate = (block: ProductNavigationBlock, source: string) => ipc?.broadcast("update-block:request", { block, source });
+export const requestEnabledUpdate = (updates: ProductNavigationUpdates) => ipc?.broadcast("update-enabled:request", updates);
 export const subscribeToConfigurationUpdates = (listener: () => void) => {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
